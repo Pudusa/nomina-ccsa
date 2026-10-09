@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import './App.css';
 
 const API_BASE = `http://${window.location.hostname}:4000`;
@@ -220,6 +221,31 @@ export default function App() {
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>('2025-10');
   const [selectedShiftTemplate, setSelectedShiftTemplate] = useState<string>('');
   const [shiftTemplates, setShiftTemplates] = useState<Record<string, DayConfig[]>>({});
+  const [monthlyOverrides, setMonthlyOverrides] = useState<Record<string, Record<number, DayConfig>>>({});
+
+  const fetchMonthlyOverrides = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/shift-monthly-overrides?year_month=${selectedMonthYear}`);
+      const data = await res.json();
+      const map: Record<string, Record<number, DayConfig>> = {};
+      data.forEach((item: any) => {
+        if (!map[item.shift_name]) map[item.shift_name] = {};
+        map[item.shift_name][item.day_index] = {
+          hours: isNaN(Number(item.hours)) ? item.hours : Number(item.hours),
+          markDirection: item.mark_direction || 'entrada',
+        };
+      });
+      setMonthlyOverrides(map);
+    } catch (err) {
+      console.error('Error fetching monthly overrides:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMonthYear) {
+      fetchMonthlyOverrides();
+    }
+  }, [selectedMonthYear]);
 
   // Create new shift modal state
   const [isCreatingShift, setIsCreatingShift] = useState<boolean>(false);
@@ -267,7 +293,11 @@ export default function App() {
         setAvailableDates(dates);
         const targetDate = dateToSelect || selectedDate || dates[0];
         setSelectedDate(targetDate);
-        setSelectedMonthYear(targetDate.substring(0, 7)); // e.g. YYYY-MM
+        const ym = targetDate.substring(0, 7);
+        setSelectedMonthYear(ym);
+
+        // Fetch monthly overrides for this month
+        await fetchMonthlyOverrides();
 
         // Fetch workers
         const workersRes = await fetch(`${API_BASE}/api/workers`);
@@ -302,7 +332,7 @@ export default function App() {
       .catch((err) => console.error(err));
   }, [selectedDate, isDataLoaded]);
 
-  // Handle file upload
+  // Handle file upload with frontend-only DD/MM/YYYY to YYYY-MM-DD normalization
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -310,10 +340,38 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
+      const dataBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(dataBuffer, { type: 'array', cellDates: false });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+
+      // Normalize 'Fecha/Hora' from DD/MM/YYYY to YYYY-MM-DD client-side
+      rows.forEach((row) => {
+        const rawDate = row['Fecha/Hora'];
+        if (typeof rawDate === 'string') {
+          const match = rawDate.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
+          if (match) {
+            const [, day, month, year, timePart] = match;
+            const paddedDay = day.padStart(2, '0');
+            const paddedMonth = month.padStart(2, '0');
+            row['Fecha/Hora'] = `${year}-${paddedMonth}-${paddedDay}${timePart}`;
+          }
+        }
+      });
+
+      const newSheet = XLSX.utils.json_to_sheet(rows);
+      const newWb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(newWb, newSheet, sheetName);
+
+      const excelBuffer = XLSX.write(newWb, { bookType: 'xlsx', type: 'array' });
+      const correctedBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const correctedFile = new File([correctedBlob], file.name, { type: file.type });
+
+      const formData = new FormData();
+      formData.append('file', correctedFile);
+
       const res = await fetch(`${API_BASE}/api/upload`, {
         method: 'POST',
         body: formData,
@@ -422,30 +480,27 @@ export default function App() {
     }
   };
 
-  // Save edited day and persist template to backend
+  // Save edited day as a monthly override for selectedMonthYear
   const handleSaveDayModal = async () => {
     if (!editingDay) return;
     const parsedHours = modalDayHours === 'P' || modalDayHours === 'p' ? 'P' : parseFloat(modalDayHours) || 0;
 
-    const currentDays = [...(shiftTemplates[selectedShiftTemplate] || [])];
-    currentDays[editingDay.dayIndex] = {
-      hours: parsedHours,
-      markDirection: modalMarkDirection,
-    };
-
     try {
-      const res = await fetch(`${API_BASE}/api/shift-templates`, {
+      const res = await fetch(`${API_BASE}/api/shift-monthly-overrides`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: selectedShiftTemplate,
-          days: currentDays,
+          shiftName: selectedShiftTemplate,
+          yearMonth: selectedMonthYear,
+          dayIndex: editingDay.dayIndex,
+          hours: parsedHours,
+          markDirection: modalMarkDirection,
         }),
       });
 
-      if (!res.ok) throw new Error('Error al guardar en el servidor');
+      if (!res.ok) throw new Error('Error al guardar el ajuste mensual en el servidor');
 
-      await fetchShiftTemplates();
+      await fetchMonthlyOverrides();
       setEditingDay(null);
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -484,7 +539,7 @@ export default function App() {
     }
   };
 
-  // Calendar card grid calculations for "Turnos" view with 2 decimals rounding
+  // Calendar card grid calculations for "Turnos" view with monthly overrides & 2 decimals rounding
   const calendarData = useMemo(() => {
     const [yearStr, monthStr] = selectedMonthYear.split('-');
     const year = parseInt(yearStr, 10) || 2025;
@@ -492,14 +547,16 @@ export default function App() {
     const daysInMonth = new Date(year, month, 0).getDate(); // 28, 29, 30, or 31
 
     const template = shiftTemplates[selectedShiftTemplate] || [];
+    const shiftOverrides = monthlyOverrides[selectedShiftTemplate] || {};
 
     let hours1_15 = 0;
     let hours16_31 = 0;
 
     const days = [];
     for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
-      const dayIndex = template.length > 0 ? (dayNum - 1) % template.length : 0;
-      const dayConfig = template[dayIndex] || { hours: 0, markDirection: 'entrada' };
+      const dayIndex = dayNum - 1;
+      const baseDayConfig = template.length > 0 ? (template[dayIndex % template.length] || { hours: 0, markDirection: 'entrada' }) : { hours: 0, markDirection: 'entrada' };
+      const dayConfig = shiftOverrides[dayIndex] || baseDayConfig;
       const hoursVal = dayConfig.hours;
       const numericVal = typeof hoursVal === 'number' ? hoursVal : parseFloat(hoursVal) || 0;
 
@@ -529,7 +586,7 @@ export default function App() {
       hours16_31: hours16_31.toFixed(2),
       totalMonthHours: totalMonthHours.toFixed(2),
     };
-  }, [selectedMonthYear, selectedShiftTemplate, shiftTemplates]);
+  }, [selectedMonthYear, selectedShiftTemplate, shiftTemplates, monthlyOverrides]);
 
   return (
     <div className="app-layout">
@@ -1011,7 +1068,7 @@ export default function App() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>Editar Día {editingDay.dayNum}</h2>
             <p className="modal-subtitle">
-              Turno: <strong>{selectedShiftTemplate}</strong> (BD SQLite)
+              Turno: <strong>{selectedShiftTemplate}</strong> — Mes: <strong>{selectedMonthYear}</strong> (Ajuste específico para este mes)
             </p>
 
             <div className="modal-field">

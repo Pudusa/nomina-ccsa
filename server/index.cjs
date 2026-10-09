@@ -464,6 +464,49 @@ app.delete('/api/shift-templates/:name', (req, res) => {
   }
 });
 
+// 8b. Get shift monthly overrides
+app.get('/api/shift-monthly-overrides', (req, res) => {
+  try {
+    const { year_month, shift_name } = req.query;
+    let query = 'SELECT * FROM shift_monthly_overrides WHERE 1=1';
+    const params = [];
+    if (year_month) {
+      query += ' AND year_month = ?';
+      params.push(year_month);
+    }
+    if (shift_name) {
+      query += ' AND shift_name = ?';
+      params.push(shift_name);
+    }
+    const rows = db.prepare(query).all(params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8c. Save or update shift monthly override
+app.post('/api/shift-monthly-overrides', (req, res) => {
+  try {
+    const { shiftName, yearMonth, dayIndex, hours, markDirection } = req.body;
+    if (!shiftName || !yearMonth || dayIndex === undefined || hours === undefined) {
+      return res.status(400).json({ error: 'Faltan datos requeridos (shiftName, yearMonth, dayIndex, hours).' });
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO shift_monthly_overrides (shift_name, year_month, day_index, hours, mark_direction)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(shift_name, year_month, day_index)
+      DO UPDATE SET hours = excluded.hours, mark_direction = excluded.mark_direction
+    `);
+    stmt.run(shiftName, yearMonth, dayIndex, String(hours), markDirection || 'entrada');
+
+    res.json({ message: 'Ajuste mensual guardado con éxito.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 9. Get attendance for a specific date (cleanup expired rules first)
 app.get('/api/attendance', (req, res) => {
   try {
@@ -519,13 +562,21 @@ app.get('/api/attendance', (req, res) => {
       const dateObj = new Date(date + 'T00:00:00');
       const dayNum = dateObj.getDate();
       const dayIndex = (dayNum - 1) % 31;
+      const yearMonth = date.substring(0, 7); // "YYYY-MM"
 
-      const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(turno);
+      // Check monthly override first
+      const monthlyOverride = db.prepare('SELECT hours, mark_direction FROM shift_monthly_overrides WHERE shift_name = ? AND year_month = ? AND day_index = ?').get(turno, yearMonth, dayIndex);
+
       let templateMarkDir = 'entrada';
-      if (templateRow) {
-        const tDay = db.prepare('SELECT mark_direction FROM shift_template_days WHERE shift_template_id = ? AND day_index = ?').get(templateRow.id, dayIndex);
-        if (tDay && tDay.mark_direction) {
-          templateMarkDir = tDay.mark_direction;
+      if (monthlyOverride && monthlyOverride.mark_direction) {
+        templateMarkDir = monthlyOverride.mark_direction;
+      } else {
+        const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(turno);
+        if (templateRow) {
+          const tDay = db.prepare('SELECT mark_direction FROM shift_template_days WHERE shift_template_id = ? AND day_index = ?').get(templateRow.id, dayIndex);
+          if (tDay && tDay.mark_direction) {
+            templateMarkDir = tDay.mark_direction;
+          }
         }
       }
 

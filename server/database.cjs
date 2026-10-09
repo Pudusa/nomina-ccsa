@@ -45,6 +45,16 @@ db.exec(`
     mark_direction TEXT,
     FOREIGN KEY(shift_template_id) REFERENCES shift_templates(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS shift_monthly_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shift_name TEXT,
+    year_month TEXT,
+    day_index INTEGER,
+    hours TEXT,
+    mark_direction TEXT,
+    UNIQUE(shift_name, year_month, day_index)
+  );
 `);
 
 console.log('Database connected and tables verified at:', dbPath);
