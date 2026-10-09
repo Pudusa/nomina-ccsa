@@ -410,16 +410,16 @@ app.post('/api/shift-templates', (req, res) => {
     // Tuple array format: [ [hours, markDirection, dayIndex], ... ]
     const tuples = days.map((d, idx) => [d.hours, d.markDirection || 'entrada', d.dayIndex !== undefined ? d.dayIndex : idx]);
 
-    const stmt = db.prepare(`
-      INSERT INTO shift_monthly_distributions (shift_id, year_month, days_json)
-      VALUES (?, ?, ?)
-      ON CONFLICT(shift_id, year_month)
-      DO UPDATE SET days_json = excluded.days_json
-    `);
-    stmt.run(shiftId, ym, JSON.stringify(tuples));
+    const existing = db.prepare('SELECT id FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ?').get(shiftId, ym);
+    if (existing) {
+      db.prepare('UPDATE shift_monthly_distributions SET days_json = ? WHERE id = ?').run(JSON.stringify(tuples), existing.id);
+    } else {
+      db.prepare('INSERT INTO shift_monthly_distributions (shift_id, year_month, days_json) VALUES (?, ?, ?)').run(shiftId, ym, JSON.stringify(tuples));
+    }
 
     res.json({ message: 'Turno guardado con éxito en la base de datos.' });
   } catch (err) {
+    console.error('Error al guardar shift template:', err);
     res.status(500).json({ error: err.message });
   }
 });
