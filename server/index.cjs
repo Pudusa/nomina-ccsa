@@ -43,54 +43,20 @@ function formatDateKey(d) {
   return `${year}-${month}-${day}`;
 }
 
-// Helper to get first available shift template dynamically (avoiding hardcoded names)
+// Helper to get default shift template name
 function getDefaultTemplateName() {
-  const t = db.prepare('SELECT name FROM shift_templates LIMIT 1').get();
-  return t ? t.name : 'TURNO 1';
+  return 'Sin turno';
 }
 
-// Seed default shift templates if none exist
-function seedDefaultTemplates() {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM shift_templates').get().cnt;
-  if (count === 0) {
-    const defaultTemplates = {
-      'TURNO 1': [8, 'P', 'P', 'P', 12, 12, 4, 12, 8, 'P', 'P', 'P', 12, 12, 4, 12, 8, 'P', 'P', 'P', 12, 12, 4, 12, 8, 'P', 'P', 'P', 12, 12, 4],
-      'TURNO 2': ['P', 'P', 12, 12, 4, 12, 8, 'P', 'P', 'P', 12, 12, 4, 12, 8, 'P', 'P', 'P', 12, 12, 4, 12, 8, 'P', 'P', 'P', 12, 12, 4, 12, 8],
-      'T.FIJO': [8.8, 8.8, 'P', 'P', 8.8, 8.8, 8.8, 8.8, 8.8, 'P', 'P', 8.8, 8.8, 8.8, 8.8, 8.8, 8.8, 'P', 'P', 8.8, 8.8, 8.8, 8.8, 8.8, 'P', 'P', 8.8, 8.8, 8.8, 8.8, 8.8],
-    };
-
-    const insertTemplate = db.prepare('INSERT INTO shift_templates (name) VALUES (?)');
-    const insertDay = db.prepare('INSERT INTO shift_template_days (shift_template_id, day_index, hours, mark_direction) VALUES (?, ?, ?, ?)');
-
-    for (const [name, days] of Object.entries(defaultTemplates)) {
-      const info = insertTemplate.run(name);
-      const templateId = info.lastInsertRowid;
-      days.forEach((h, idx) => {
-        insertDay.run(templateId, idx, String(h), 'entrada');
-      });
-    }
-  }
-}
-seedDefaultTemplates();
-
-// Helper to normalize worker turnos to match available database shift templates
+// Helper to ensure unset worker turnos default to 'Sin turno' without overwriting assigned turnos
 function normalizeWorkerTurnos() {
   try {
-    const templates = db.prepare('SELECT name FROM shift_templates').all().map(t => t.name);
-    if (templates.length === 0) return;
-    const defaultT = templates[0];
-    const secondT = templates[1] || defaultT;
-
     const workers = db.prepare('SELECT no, default_turno FROM workers').all();
     const updateStmt = db.prepare('UPDATE workers SET default_turno = ? WHERE no = ?');
 
     for (const w of workers) {
-      if (!templates.includes(w.default_turno)) {
-        let mapped = defaultT;
-        if (w.default_turno && (w.default_turno.toLowerCase().includes('vespertino') || w.default_turno.toLowerCase().includes('nocturno'))) {
-          mapped = secondT;
-        }
-        updateStmt.run(mapped, w.no);
+      if (!w.default_turno) {
+        updateStmt.run('Sin turno', w.no);
       }
     }
   } catch (err) {
@@ -98,14 +64,12 @@ function normalizeWorkerTurnos() {
   }
 }
 
-// Helper to cleanup fulfilled/expired rules: total rules expire when applied (start_date <= today), partial rules expire when deadline passes (end_date < today)
+// Helper to cleanup fulfilled/expired rules
 function cleanupExpiredRules() {
   try {
     normalizeWorkerTurnos();
-
     const todayStr = formatDateKey(new Date());
 
-    // 1. Total rules expire when applied (start_date <= today) -> update default_turno and remove rule
     const activeTotalRules = db.prepare(`
       SELECT * FROM shift_rules WHERE type = 'total' AND start_date <= ?
     `).all(todayStr);
@@ -118,7 +82,6 @@ function cleanupExpiredRules() {
       deleteRule.run(r.id);
     }
 
-    // 2. Partial rules expire when deadline culminates (end_date < today) -> remove rule
     db.prepare(`
       DELETE FROM shift_rules
       WHERE type = 'parcial' AND end_date < ?
@@ -128,7 +91,7 @@ function cleanupExpiredRules() {
   }
 }
 
-// 1. Upload and process Excel file (Auditable & Non-Destructive Appending)
+// 1. Upload and process Excel file
 app.post('/api/upload', upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
@@ -189,14 +152,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         } else {
           duplicateRecordsCount++;
         }
-
-        if (!workerHoursMap.has(no)) {
-          workerHoursMap.set(no, []);
-        }
-        workerHoursMap.get(no).push(d.getHours());
       }
-
-      // Optionally adjust default turno based on hours if needed, or keep default
     });
 
     transaction(rows);
@@ -252,11 +208,11 @@ function getTurnoOnDate(defaultTurno, rules, dateStr) {
   return resolved;
 }
 
-// Helper to filter out duplicate/accidental double punches within a 30-minute window (keeping only the first mark)
+// Helper to filter out duplicate/accidental double punches within a 30-minute window
 function filterDuplicatePunches(times) {
   if (!times || times.length <= 1) return times;
   const filtered = [times[0]];
-  const MIN_GAP_MS = 30 * 60 * 1000; // 30 minutes
+  const MIN_GAP_MS = 30 * 60 * 1000;
 
   for (let i = 1; i < times.length; i++) {
     const lastAccepted = filtered[filtered.length - 1];
@@ -268,7 +224,7 @@ function filterDuplicatePunches(times) {
   return filtered;
 }
 
-// Helper to classify punches into morning/afternoon entries and exits based on shift type and punch time
+// Helper to classify punches
 function classifyPunches(times, turno, ruleFirstMarkDir) {
   let entradaMañana = null;
   let salidaMañana = null;
@@ -283,41 +239,38 @@ function classifyPunches(times, turno, ruleFirstMarkDir) {
   const isNightOrAfternoon = tLower.includes('turno 2') || tLower.includes('nocturno') || tLower.includes('vespertino');
   const isSalidaFirst = ruleFirstMarkDir === 'salida' || isNightOrAfternoon;
 
-  const morningTimes = [];
-  const afternoonTimes = [];
+  const marca1 = times[0] ? times[0].toISOString() : null;
+  const marca2 = times.length > 1 ? times[1].toISOString() : null;
 
-  times.forEach((t) => {
-    const hour = t.getHours();
-    const minute = t.getMinutes();
-    const timeDecimal = hour + minute / 60;
-    if (timeDecimal < 12.5) {
-      morningTimes.push(t);
-    } else {
-      afternoonTimes.push(t);
+  if (!isSalidaFirst) {
+    // Normal: First is Entrada, Second is Salida
+    if (times.length > 0) {
+      const t = times[0];
+      const timeDec = t.getHours() + t.getMinutes() / 60;
+      if (timeDec < 12.5) entradaMañana = t.toISOString();
+      else entradaTarde = t.toISOString();
     }
-  });
-
-  // At most ONE mark in the morning
-  if (morningTimes.length > 0) {
-    const mTime = morningTimes[0].toISOString();
-    if (isSalidaFirst) {
-      salidaMañana = mTime;
-    } else {
-      entradaMañana = mTime;
+    if (times.length > 1) {
+      const t = times[times.length - 1];
+      const timeDec = t.getHours() + t.getMinutes() / 60;
+      if (timeDec < 12.5) salidaMañana = t.toISOString();
+      else salidaTarde = t.toISOString();
+    }
+  } else {
+    // Salida First: First is Salida, Second is Entrada
+    if (times.length > 0) {
+      const t = times[0];
+      const timeDec = t.getHours() + t.getMinutes() / 60;
+      if (timeDec < 12.5) salidaMañana = t.toISOString();
+      else salidaTarde = t.toISOString();
+    }
+    if (times.length > 1) {
+      const t = times[1];
+      const timeDec = t.getHours() + t.getMinutes() / 60;
+      if (timeDec < 12.5) entradaMañana = t.toISOString();
+      else entradaTarde = t.toISOString();
     }
   }
-
-  // At most ONE mark in the afternoon
-  if (afternoonTimes.length > 0) {
-    if (isNightOrAfternoon) {
-      entradaTarde = afternoonTimes[0].toISOString();
-    } else {
-      salidaTarde = afternoonTimes[afternoonTimes.length - 1].toISOString();
-    }
-  }
-
-  const marca1 = entradaMañana || entradaTarde || null;
-  const marca2 = salidaTarde || salidaMañana || null;
 
   return {
     entradaMañana,
@@ -329,7 +282,7 @@ function classifyPunches(times, turno, ruleFirstMarkDir) {
   };
 }
 
-// 3. Get all workers with their rules (and cleanup expired rules first)
+// 3. Get all workers with their rules
 app.get('/api/workers', (req, res) => {
   try {
     cleanupExpiredRules();
@@ -358,30 +311,31 @@ app.get('/api/workers', (req, res) => {
   }
 });
 
-// 4. Add shift rule for worker (Ensuring only ONE active rule exists at a time per worker)
+// 4. Add shift rule for worker
 app.post('/api/workers/:no/rules', (req, res) => {
   try {
     const { no } = req.params;
-    const { type, turno, startDate, endDate, first_mark_direction } = req.body;
+    const { type, turno, startDate, endDate } = req.body;
 
     if (!type || !turno || !startDate) {
       return res.status(400).json({ error: 'Faltan datos requeridos (type, turno, startDate).' });
     }
 
     const transaction = db.transaction(() => {
-      // Remove any existing rules so only ONE rule exists at a time per worker
-      db.prepare('DELETE FROM shift_rules WHERE worker_no = ?').run(no);
-
-      const stmt = db.prepare(`
-        INSERT INTO shift_rules (worker_no, type, turno, start_date, end_date, first_mark_direction)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      return stmt.run(no, type, turno, startDate, endDate || startDate, first_mark_direction || 'entrada');
+      if (type === 'total') {
+        db.prepare('UPDATE workers SET default_turno = ? WHERE no = ?').run(turno, no);
+        db.prepare('DELETE FROM shift_rules WHERE worker_no = ?').run(no);
+      } else {
+        const stmt = db.prepare(`
+          INSERT INTO shift_rules (worker_no, type, turno, start_date, end_date)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        stmt.run(no, type, turno, startDate, endDate || startDate);
+      }
     });
 
-    const info = transaction();
-
-    res.json({ message: 'Regla de turno guardada con éxito (regla única activa).', id: info.lastInsertRowid });
+    transaction();
+    res.json({ message: 'Turno asignado con éxito.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -398,24 +352,37 @@ app.delete('/api/rules/:id', (req, res) => {
   }
 });
 
-// 6. Get shift templates
+// 6. Get shift templates (for specific month with BASE fallback)
 app.get('/api/shift-templates', (req, res) => {
   try {
+    const { year_month } = req.query;
+    const targetMonth = year_month || 'BASE';
     const templates = db.prepare('SELECT * FROM shift_templates').all();
-    const days = db.prepare('SELECT * FROM shift_template_days ORDER BY day_index ASC').all();
-
-    const daysMap = {};
-    days.forEach((d) => {
-      if (!daysMap[d.shift_template_id]) daysMap[d.shift_template_id] = [];
-      daysMap[d.shift_template_id].push({
-        hours: isNaN(Number(d.hours)) ? d.hours : Number(d.hours),
-        markDirection: d.mark_direction || 'entrada',
-      });
-    });
-
     const result = {};
+
     templates.forEach((t) => {
-      result[t.name] = daysMap[t.id] || [];
+      let dist = db.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(t.id, targetMonth);
+      if (!dist && targetMonth !== 'BASE') {
+        dist = db.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(t.id, 'BASE');
+      }
+
+      if (dist && dist.days_json) {
+        try {
+          const parsed = JSON.parse(dist.days_json);
+          result[t.name] = parsed.map(item => {
+            const hours = Array.isArray(item) ? item[0] : item.hours;
+            const markDirection = Array.isArray(item) ? item[1] : item.markDirection;
+            return {
+              hours: isNaN(Number(hours)) ? hours : Number(hours),
+              markDirection: markDirection || 'entrada',
+            };
+          });
+        } catch (e) {
+          result[t.name] = [];
+        }
+      } else {
+        result[t.name] = [];
+      }
     });
 
     res.json(result);
@@ -424,28 +391,32 @@ app.get('/api/shift-templates', (req, res) => {
   }
 });
 
-// 7. Create or update shift template
+// 7. Create or update shift template and its distribution for a specific month (or BASE)
 app.post('/api/shift-templates', (req, res) => {
   try {
-    const { name, days } = req.body; // days is array of { hours, markDirection }
+    const { name, days, yearMonth } = req.body;
     if (!name || !days || !Array.isArray(days)) {
       return res.status(400).json({ error: 'Nombre y días del turno son requeridos.' });
     }
 
-    const insertOrReplaceTemplate = db.prepare('INSERT OR REPLACE INTO shift_templates (name) VALUES (?)');
-    const info = insertOrReplaceTemplate.run(name);
+    const ym = yearMonth || 'BASE';
 
-    // Get template id
+    const insertOrIgnore = db.prepare('INSERT OR IGNORE INTO shift_templates (name) VALUES (?)');
+    insertOrIgnore.run(name);
+
     const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(name);
-    const templateId = templateRow.id;
+    const shiftId = templateRow.id;
 
-    // Clear existing days for this template
-    db.prepare('DELETE FROM shift_template_days WHERE shift_template_id = ?').run(templateId);
+    // Tuple array format: [ [hours, markDirection, dayIndex], ... ]
+    const tuples = days.map((d, idx) => [d.hours, d.markDirection || 'entrada', d.dayIndex !== undefined ? d.dayIndex : idx]);
 
-    const insertDay = db.prepare('INSERT INTO shift_template_days (shift_template_id, day_index, hours, mark_direction) VALUES (?, ?, ?, ?)');
-    days.forEach((d, idx) => {
-      insertDay.run(templateId, idx, String(d.hours), d.markDirection || 'entrada');
-    });
+    const stmt = db.prepare(`
+      INSERT INTO shift_monthly_distributions (shift_id, year_month, days_json)
+      VALUES (?, ?, ?)
+      ON CONFLICT(shift_id, year_month)
+      DO UPDATE SET days_json = excluded.days_json
+    `);
+    stmt.run(shiftId, ym, JSON.stringify(tuples));
 
     res.json({ message: 'Turno guardado con éxito en la base de datos.' });
   } catch (err) {
@@ -464,50 +435,7 @@ app.delete('/api/shift-templates/:name', (req, res) => {
   }
 });
 
-// 8b. Get shift monthly overrides
-app.get('/api/shift-monthly-overrides', (req, res) => {
-  try {
-    const { year_month, shift_name } = req.query;
-    let query = 'SELECT * FROM shift_monthly_overrides WHERE 1=1';
-    const params = [];
-    if (year_month) {
-      query += ' AND year_month = ?';
-      params.push(year_month);
-    }
-    if (shift_name) {
-      query += ' AND shift_name = ?';
-      params.push(shift_name);
-    }
-    const rows = db.prepare(query).all(params);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 8c. Save or update shift monthly override
-app.post('/api/shift-monthly-overrides', (req, res) => {
-  try {
-    const { shiftName, yearMonth, dayIndex, hours, markDirection } = req.body;
-    if (!shiftName || !yearMonth || dayIndex === undefined || hours === undefined) {
-      return res.status(400).json({ error: 'Faltan datos requeridos (shiftName, yearMonth, dayIndex, hours).' });
-    }
-
-    const stmt = db.prepare(`
-      INSERT INTO shift_monthly_overrides (shift_name, year_month, day_index, hours, mark_direction)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(shift_name, year_month, day_index)
-      DO UPDATE SET hours = excluded.hours, mark_direction = excluded.mark_direction
-    `);
-    stmt.run(shiftName, yearMonth, dayIndex, String(hours), markDirection || 'entrada');
-
-    res.json({ message: 'Ajuste mensual guardado con éxito.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 9. Get attendance for a specific date (cleanup expired rules first)
+// 9. Get attendance for a specific date
 app.get('/api/attendance', (req, res) => {
   try {
     const { date } = req.query; // YYYY-MM-DD
@@ -558,25 +486,29 @@ app.get('/api/attendance', (req, res) => {
       const workerRules = workerObj ? workerObj.rules : [];
       const turno = getTurnoOnDate(defaultTurno, workerRules, date);
 
-      // Determine day index in template (day of month 1-31 -> index 0-30)
       const dateObj = new Date(date + 'T00:00:00');
       const dayNum = dateObj.getDate();
       const dayIndex = (dayNum - 1) % 31;
       const yearMonth = date.substring(0, 7); // "YYYY-MM"
 
-      // Check monthly override first
-      const monthlyOverride = db.prepare('SELECT hours, mark_direction FROM shift_monthly_overrides WHERE shift_name = ? AND year_month = ? AND day_index = ?').get(turno, yearMonth, dayIndex);
-
+      // Check unique shift distribution for specific month with BASE fallback
+      const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(turno);
       let templateMarkDir = 'entrada';
-      if (monthlyOverride && monthlyOverride.mark_direction) {
-        templateMarkDir = monthlyOverride.mark_direction;
-      } else {
-        const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(turno);
-        if (templateRow) {
-          const tDay = db.prepare('SELECT mark_direction FROM shift_template_days WHERE shift_template_id = ? AND day_index = ?').get(templateRow.id, dayIndex);
-          if (tDay && tDay.mark_direction) {
-            templateMarkDir = tDay.mark_direction;
-          }
+
+      if (templateRow) {
+        let dist = db.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(templateRow.id, yearMonth);
+        if (!dist) {
+          dist = db.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(templateRow.id, 'BASE');
+        }
+        if (dist && dist.days_json) {
+          try {
+            const daysArr = JSON.parse(dist.days_json);
+            const dayItem = daysArr.find(item => (Array.isArray(item) ? item[2] === dayIndex : item.dayIndex === dayIndex));
+            if (dayItem) {
+              const markDir = Array.isArray(dayItem) ? dayItem[1] : dayItem.markDirection;
+              if (markDir) templateMarkDir = markDir;
+            }
+          } catch (e) {}
         }
       }
 

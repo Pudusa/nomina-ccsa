@@ -22,7 +22,6 @@ interface ShiftRule {
   turno: string;
   start_date: string;
   end_date?: string;
-  first_mark_direction?: 'entrada' | 'salida';
 }
 
 interface UniqueWorker {
@@ -83,9 +82,10 @@ interface VisualDatePickerProps {
   value: string;
   onChange: (dateStr: string) => void;
   minDate?: string;
+  availableDates?: string[];
 }
 
-function VisualDatePicker({ label, value, onChange, minDate }: VisualDatePickerProps) {
+function VisualDatePicker({ label, value, onChange, minDate, availableDates }: VisualDatePickerProps) {
   const currentDate = value ? new Date(value + 'T00:00:00') : new Date();
   const [viewYear, setViewYear] = useState<number>(currentDate.getFullYear());
   const [viewMonth, setViewMonth] = useState<number>(currentDate.getMonth());
@@ -176,13 +176,14 @@ function VisualDatePicker({ label, value, onChange, minDate }: VisualDatePickerP
             const isSelected = dateStr === value;
             const isToday = dateStr === todayStr;
             const isDisabled = minDate ? dateStr < minDate : false;
+            const hasData = availableDates ? availableDates.includes(dateStr) : false;
 
             return (
               <button
                 key={dateStr}
                 type="button"
                 disabled={isDisabled}
-                className={`vdp-day ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${isDisabled ? 'disabled' : ''}`}
+                className={`vdp-day ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${isDisabled ? 'disabled' : ''} ${hasData ? 'has-data' : ''}`}
                 onClick={() => !isDisabled && onChange(dateStr)}
               >
                 {parseInt(dateStr.split('-')[2], 10)}
@@ -218,34 +219,14 @@ export default function App() {
   const [workerCurrentPage, setWorkerCurrentPage] = useState<number>(1);
 
   // Turnos (Calendar) state & shift templates from backend
-  const [selectedMonthYear, setSelectedMonthYear] = useState<string>('2025-10');
+  const [selectedMonthYear, setSelectedMonthYear] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
   const [selectedShiftTemplate, setSelectedShiftTemplate] = useState<string>('');
   const [shiftTemplates, setShiftTemplates] = useState<Record<string, DayConfig[]>>({});
-  const [monthlyOverrides, setMonthlyOverrides] = useState<Record<string, Record<number, DayConfig>>>({});
-
-  const fetchMonthlyOverrides = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/shift-monthly-overrides?year_month=${selectedMonthYear}`);
-      const data = await res.json();
-      const map: Record<string, Record<number, DayConfig>> = {};
-      data.forEach((item: any) => {
-        if (!map[item.shift_name]) map[item.shift_name] = {};
-        map[item.shift_name][item.day_index] = {
-          hours: isNaN(Number(item.hours)) ? item.hours : Number(item.hours),
-          markDirection: item.mark_direction || 'entrada',
-        };
-      });
-      setMonthlyOverrides(map);
-    } catch (err) {
-      console.error('Error fetching monthly overrides:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedMonthYear) {
-      fetchMonthlyOverrides();
-    }
-  }, [selectedMonthYear]);
 
   // Create new shift modal state
   const [isCreatingShift, setIsCreatingShift] = useState<boolean>(false);
@@ -262,15 +243,15 @@ export default function App() {
   const [editType, setEditType] = useState<'total' | 'parcial'>('total');
   const [ruleStartDate, setRuleStartDate] = useState<string>('');
   const [ruleEndDate, setRuleEndDate] = useState<string>('');
-  const [firstMarkDirection, setFirstMarkDirection] = useState<'entrada' | 'salida'>('entrada');
 
   const [currentView, setCurrentView] = useState<'asistencias' | 'trabajadores' | 'turnos'>('asistencias');
   const pageSize = 15;
 
-  // Fetch shift templates from backend
-  const fetchShiftTemplates = async () => {
+  // Fetch shift templates from backend for specific month
+  const fetchShiftTemplates = async (ym?: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/shift-templates`);
+      const targetYm = ym || selectedMonthYear || getTodayDateString().substring(0, 7);
+      const res = await fetch(`${API_BASE}/api/shift-templates?year_month=${targetYm}`);
       const data = await res.json();
       setShiftTemplates(data);
       const keys = Object.keys(data);
@@ -282,6 +263,13 @@ export default function App() {
     }
   };
 
+  // When selectedMonthYear changes, fetch shift templates for that month
+  useEffect(() => {
+    if (isDataLoaded && selectedMonthYear) {
+      fetchShiftTemplates(selectedMonthYear);
+    }
+  }, [selectedMonthYear, isDataLoaded]);
+
   // Fetch initial state / check if data exists
   const refreshData = async (dateToSelect?: string) => {
     try {
@@ -289,15 +277,11 @@ export default function App() {
       const dates: string[] = await datesRes.json();
 
       if (dates.length > 0) {
-        setIsDataLoaded(true);
         setAvailableDates(dates);
         const targetDate = dateToSelect || selectedDate || dates[0];
         setSelectedDate(targetDate);
         const ym = targetDate.substring(0, 7);
         setSelectedMonthYear(ym);
-
-        // Fetch monthly overrides for this month
-        await fetchMonthlyOverrides();
 
         // Fetch workers
         const workersRes = await fetch(`${API_BASE}/api/workers`);
@@ -309,8 +293,10 @@ export default function App() {
         const attendance = await attRes.json();
         setWorkerSummaries(attendance);
 
-        // Fetch shift templates
-        await fetchShiftTemplates();
+        // Fetch shift templates for the correct ym
+        await fetchShiftTemplates(ym);
+
+        setIsDataLoaded(true);
       } else {
         setIsDataLoaded(false);
       }
@@ -449,7 +435,6 @@ export default function App() {
           turno: newTurnoValue,
           startDate: ruleStartDate,
           endDate: editType === 'parcial' ? (ruleEndDate || ruleStartDate) : undefined,
-          first_mark_direction: firstMarkDirection,
         }),
       });
 
@@ -480,28 +465,59 @@ export default function App() {
     }
   };
 
-  // Save edited day as a monthly override for selectedMonthYear
+  // Save edited day to shift template
   const handleSaveDayModal = async () => {
     if (!editingDay) return;
     const parsedHours = modalDayHours === 'P' || modalDayHours === 'p' ? 'P' : parseFloat(modalDayHours) || 0;
 
+    const currentDays = [...(shiftTemplates[selectedShiftTemplate] || Array.from({ length: 31 }, () => ({ hours: 'P', markDirection: 'entrada' as const })))];
+    currentDays[editingDay.dayIndex] = {
+      hours: parsedHours,
+      markDirection: modalMarkDirection,
+    };
+
     try {
-      const res = await fetch(`${API_BASE}/api/shift-monthly-overrides`, {
+      const res = await fetch(`${API_BASE}/api/shift-templates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shiftName: selectedShiftTemplate,
+          name: selectedShiftTemplate,
+          days: currentDays,
           yearMonth: selectedMonthYear,
-          dayIndex: editingDay.dayIndex,
-          hours: parsedHours,
-          markDirection: modalMarkDirection,
         }),
       });
 
-      if (!res.ok) throw new Error('Error al guardar el ajuste mensual en el servidor');
+      if (!res.ok) throw new Error('Error al guardar el día en el servidor');
 
-      await fetchMonthlyOverrides();
+      await fetchShiftTemplates(selectedMonthYear);
       setEditingDay(null);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  // Save all changes for the current shift template
+  const handleSaveAllChanges = async () => {
+    if (!selectedShiftTemplate) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/shift-templates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: selectedShiftTemplate,
+          days: calendarData.days.map(d => ({
+            dayIndex: d.dayIndex,
+            hours: d.hours,
+            markDirection: d.markDirection,
+          })),
+          yearMonth: selectedMonthYear,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Error al guardar los cambios en el servidor');
+
+      await fetchShiftTemplates(selectedMonthYear);
+      alert('¡Cambios guardados con éxito en la base de datos SQLite!');
     } catch (err: any) {
       alert('Error: ' + err.message);
     }
@@ -512,9 +528,9 @@ export default function App() {
     if (!newShiftName.trim()) return;
     const name = newShiftName.trim().toUpperCase();
 
-    // Default 31 days with 8 hours
+    // Default 31 days with 'P' (Descanso)
     const defaultDays: DayConfig[] = Array.from({ length: 31 }, () => ({
-      hours: 8,
+      hours: 'P',
       markDirection: 'entrada',
     }));
 
@@ -525,12 +541,13 @@ export default function App() {
         body: JSON.stringify({
           name,
           days: defaultDays,
+          yearMonth: selectedMonthYear,
         }),
       });
 
       if (!res.ok) throw new Error('Error al crear el turno');
 
-      await fetchShiftTemplates();
+      await fetchShiftTemplates(selectedMonthYear);
       setSelectedShiftTemplate(name);
       setNewShiftName('');
       setIsCreatingShift(false);
@@ -539,7 +556,7 @@ export default function App() {
     }
   };
 
-  // Calendar card grid calculations for "Turnos" view with monthly overrides & 2 decimals rounding
+  // Calendar card grid calculations for "Turnos" view with 2 decimals rounding
   const calendarData = useMemo(() => {
     const [yearStr, monthStr] = selectedMonthYear.split('-');
     const year = parseInt(yearStr, 10) || 2025;
@@ -547,7 +564,6 @@ export default function App() {
     const daysInMonth = new Date(year, month, 0).getDate(); // 28, 29, 30, or 31
 
     const template = shiftTemplates[selectedShiftTemplate] || [];
-    const shiftOverrides = monthlyOverrides[selectedShiftTemplate] || {};
 
     let hours1_15 = 0;
     let hours16_31 = 0;
@@ -555,8 +571,7 @@ export default function App() {
     const days = [];
     for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
       const dayIndex = dayNum - 1;
-      const baseDayConfig = template.length > 0 ? (template[dayIndex % template.length] || { hours: 0, markDirection: 'entrada' }) : { hours: 0, markDirection: 'entrada' };
-      const dayConfig = shiftOverrides[dayIndex] || baseDayConfig;
+      const dayConfig = template[dayIndex] || { hours: 'P', markDirection: 'entrada' };
       const hoursVal = dayConfig.hours;
       const numericVal = typeof hoursVal === 'number' ? hoursVal : parseFloat(hoursVal) || 0;
 
@@ -586,7 +601,7 @@ export default function App() {
       hours16_31: hours16_31.toFixed(2),
       totalMonthHours: totalMonthHours.toFixed(2),
     };
-  }, [selectedMonthYear, selectedShiftTemplate, shiftTemplates, monthlyOverrides]);
+  }, [selectedMonthYear, selectedShiftTemplate, shiftTemplates]);
 
   return (
     <div className="app-layout">
@@ -671,26 +686,20 @@ export default function App() {
             </div>
 
             {/* Controls: Date Selector & Search */}
-            <div className="controls-bar" style={{ justifyContent: 'flex-start', gap: '2rem' }}>
-              <div className="filter-box">
-                <label htmlFor="date-select">📅 Día:</label>
-                <select
-                  id="date-select"
+            <div className="controls-bar" style={{ justifyContent: 'flex-start', alignItems: 'flex-start', gap: '2rem' }}>
+              <div className="filter-box" style={{ width: '280px' }}>
+                <VisualDatePicker
+                  label="📅 Día de Asistencia:"
                   value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value);
+                  availableDates={availableDates}
+                  onChange={(dateStr) => {
+                    setSelectedDate(dateStr);
                     setCurrentPage(1);
                   }}
-                >
-                  {availableDates.map((dateStr) => (
-                    <option key={dateStr} value={dateStr}>
-                      {formatDisplayDate(dateStr)} {dateStr === availableDates[0] ? ' (Primero)' : ''}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
-              <div className="search-box">
+              <div className="search-box" style={{ alignSelf: 'center' }}>
                 <input
                   type="text"
                   placeholder="Buscar por Nombre o No. de empleado..."
@@ -862,12 +871,13 @@ export default function App() {
                           key={idx}
                           onClick={() => {
                             setEditingWorker(worker);
-                            setNewTurnoValue(currentTurno);
+                            const templateKeys = Object.keys(shiftTemplates);
+                            const defaultModalTurno = templateKeys.includes(currentTurno) ? currentTurno : (templateKeys[0] || 'Matutino');
+                            setNewTurnoValue(defaultModalTurno);
                             setEditType('total');
                             const todayStr = getTodayDateString();
                             setRuleStartDate(todayStr);
                             setRuleEndDate(todayStr);
-                            setFirstMarkDirection('entrada');
                           }}
                           title="Haz clic para configurar turno"
                         >
@@ -935,23 +945,59 @@ export default function App() {
                   />
                 </div>
 
-                <div className="filter-box">
+                <div className="filter-box" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <label htmlFor="shift-template-select">⚙️ Turno:</label>
                   <select
                     id="shift-template-select"
                     value={selectedShiftTemplate}
                     onChange={(e) => setSelectedShiftTemplate(e.target.value)}
                   >
-                    {Object.keys(shiftTemplates).map((templateKey) => (
-                      <option key={templateKey} value={templateKey}>
-                        {templateKey}
-                      </option>
-                    ))}
+                    {Object.keys(shiftTemplates).length === 0 ? (
+                      <option value="">Sin turno</option>
+                    ) : (
+                      Object.keys(shiftTemplates).map((templateKey) => (
+                        <option key={templateKey} value={templateKey}>
+                          {templateKey}
+                        </option>
+                      ))
+                    )}
                   </select>
+                  {selectedShiftTemplate && selectedShiftTemplate !== 'Sin turno' && (
+                    <button
+                      className="btn-delete-rule"
+                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                      onClick={async () => {
+                        if (!confirm(`¿Estás seguro de eliminar el turno "${selectedShiftTemplate}"?`)) return;
+                        try {
+                          const res = await fetch(`${API_BASE}/api/shift-templates/${encodeURIComponent(selectedShiftTemplate)}`, {
+                            method: 'DELETE',
+                          });
+                          if (!res.ok) throw new Error('Error al eliminar el turno');
+                          const templatesRes = await fetch(`${API_BASE}/api/shift-templates`);
+                          const templatesData = await templatesRes.json();
+                          setShiftTemplates(templatesData);
+                          const keys = Object.keys(templatesData);
+                          setSelectedShiftTemplate(keys.length > 0 ? keys[0] : '');
+                        } catch (err) {
+                          alert((err as Error).message);
+                        }
+                      }}
+                      title="Eliminar turno actual"
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <button
+                  className="btn-save"
+                  onClick={handleSaveAllChanges}
+                  title="Guardar todos los cambios de este turno y mes"
+                >
+                  💾 Guardar Cambios
+                </button>
                 <button
                   className="btn-save"
                   onClick={() => setIsCreatingShift(true)}
@@ -1046,6 +1092,9 @@ export default function App() {
                 className="modal-text-input"
                 value={newShiftName}
                 onChange={(e) => setNewShiftName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateNewShift();
+                }}
                 placeholder="Ej. TURNO ROTATIVO 5"
               />
             </div>
@@ -1079,6 +1128,9 @@ export default function App() {
                 className="modal-text-input"
                 value={modalDayHours}
                 onChange={(e) => setModalDayHours(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveDayModal();
+                }}
                 placeholder="Ej. 12 o P"
               />
             </div>
@@ -1151,21 +1203,6 @@ export default function App() {
               </select>
             </div>
 
-            <div className="modal-field">
-              <label htmlFor="modal-mark-dir">Dirección de la 1era Marca (Turnos Nocturnos / Rotativos):</label>
-              <select
-                id="modal-mark-dir"
-                value={firstMarkDirection}
-                onChange={(e) => setFirstMarkDirection(e.target.value as 'entrada' | 'salida')}
-              >
-                <option value="entrada">Entrada (Check-in)</option>
-                <option value="salida">Salida (Check-out - Cruza medianoche)</option>
-              </select>
-              <small className="modal-hint">
-                Define si el primer marcaje del día corresponde a una Entrada o a una Salida (útil para turnos que entran de noche y salen por la mañana).
-              </small>
-            </div>
-
             <VisualDatePicker
               label="Fecha de inicio:"
               value={ruleStartDate}
@@ -1195,7 +1232,6 @@ export default function App() {
                       <span>
                         [{r.type.toUpperCase()}] <strong>{r.turno}</strong> ({formatDisplayDate(r.start_date)}
                         {r.end_date && r.end_date !== r.start_date ? ` al ${formatDisplayDate(r.end_date)}` : ''})
-                        {r.first_mark_direction ? ` [1ra Marca: ${r.first_mark_direction}]` : ''}
                       </span>
                       <button
                         className="btn-delete-rule"

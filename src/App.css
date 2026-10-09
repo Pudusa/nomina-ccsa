@@ -855,3 +855,23 @@ body {
   cursor: not-allowed;
   background: #090d16;
 }
+
+.vdp-day.has-data {
+  position: relative;
+}
+
+.vdp-day.has-data::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background-color: #38bdf8;
+  border-radius: 50%;
+}
+
+.vdp-day.selected.has-data::after {
+  background-color: #ffffff;
+}
