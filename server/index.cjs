@@ -408,7 +408,14 @@ app.post('/api/shift-templates', (req, res) => {
     const shiftId = templateRow.id;
 
     // Tuple array format: [ [hours, markDirection, dayIndex], ... ]
-    const tuples = days.map((d, idx) => [d.hours, d.markDirection || 'entrada', d.dayIndex !== undefined ? d.dayIndex : idx]);
+    const tuples = days.map((d, idx) => {
+      const item = d || {};
+      return [
+        item.hours !== undefined ? item.hours : 'P',
+        item.markDirection || 'entrada',
+        item.dayIndex !== undefined ? item.dayIndex : idx
+      ];
+    });
 
     const existing = db.prepare('SELECT id FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ?').get(shiftId, ym);
     if (existing) {
