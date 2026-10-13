@@ -484,14 +484,14 @@ app.get('/api/attendance', (req, res) => {
     });
 
     const summaries = [];
-    workerTimesMap.forEach((times, no) => {
-      times.sort((a, b) => a.getTime() - b.getTime());
-
-      const workerObj = workersMap.get(no);
-      const nombre = workerObj ? workerObj.nombre : 'Desconocido';
-      const defaultTurno = workerObj ? workerObj.defaultTurno : defaultFallback;
-      const workerRules = workerObj ? workerObj.rules : [];
+    workersMap.forEach((workerObj, no) => {
+      const nombre = workerObj.nombre || 'Desconocido';
+      const defaultTurno = workerObj.defaultTurno;
+      const workerRules = workerObj.rules;
       const turno = getTurnoOnDate(defaultTurno, workerRules, date);
+
+      const times = workerTimesMap.get(no) || [];
+      times.sort((a, b) => a.getTime() - b.getTime());
 
       const dateObj = new Date(date + 'T00:00:00');
       const dayNum = dateObj.getDate();
@@ -561,6 +561,18 @@ app.get('/api/attendance', (req, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend server running on http://0.0.0.0:${PORT}`);
+});
+
+server.on('error', (err) => {
+  console.error('❌ Server error:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });

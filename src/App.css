@@ -715,6 +715,7 @@ body {
 
 /* Visual Date Picker Styles */
 .visual-date-picker {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -760,10 +761,17 @@ body {
 }
 
 .vdp-calendar-card {
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  padding: 0.75rem;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  width: 300px;
+  box-sizing: border-box;
 }
 
 .vdp-cal-nav {
