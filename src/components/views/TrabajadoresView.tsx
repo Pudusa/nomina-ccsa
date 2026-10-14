@@ -15,6 +15,7 @@ interface TrabajadoresViewProps {
   setWorkerCurrentPage: (p: number | ((prev: number) => number)) => void;
   workerTotalPages: number;
   onEditWorker: (worker: UniqueWorker, currentTurno: string) => void;
+  onSort: (field: string) => void;
 }
 
 export function TrabajadoresView({
@@ -31,6 +32,7 @@ export function TrabajadoresView({
   setWorkerCurrentPage,
   workerTotalPages,
   onEditWorker,
+  onSort,
 }: TrabajadoresViewProps) {
   return (
     <>
@@ -84,10 +86,10 @@ export function TrabajadoresView({
         <table className="nomina-table clickable-table">
           <thead>
             <tr>
-              <th>No.</th>
-              <th>Nombre del Trabajador</th>
-              <th>Turno Actual ({selectedDate ? formatDisplayDate(selectedDate) : ''})</th>
-              <th>Reglas Activas</th>
+              <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-sky-400">No. ↕</th>
+              <th onClick={() => onSort('nombre')} className="cursor-pointer select-none hover:text-sky-400">Nombre del Trabajador ↕</th>
+              <th onClick={() => onSort('defaultTurno')} className="cursor-pointer select-none hover:text-sky-400">Turno Actual ({selectedDate ? formatDisplayDate(selectedDate) : ''}) ↕</th>
+              <th onClick={() => onSort('rules')} className="cursor-pointer select-none hover:text-sky-400">Reglas Activas ↕</th>
             </tr>
           </thead>
           <tbody>

@@ -1,7 +1,6 @@
 {
   "2": "compilerOptions",
   "4": "compilerOptions",
-  "5": "dependencies",
   "6": "devDependencies",
   "7": "database.cjs",
   "8": ".oxlintrc.json",
