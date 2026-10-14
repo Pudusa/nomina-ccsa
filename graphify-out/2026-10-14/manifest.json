@@ -36,10 +36,10 @@
     "semantic_hash": "1bfe8cc307a21eabee136ee983ccc4a4"
   },
   "src/App.tsx": {
-    "mtime": 1791961143.0010583,
-    "seen": 1791961423.07564,
-    "ast_hash": "ae839f0c108ee47ae7a6515fd696a932",
-    "semantic_hash": "ae839f0c108ee47ae7a6515fd696a932"
+    "mtime": 1791965457.8095515,
+    "seen": 1791965980.1100507,
+    "ast_hash": "f443d1fe9913d963f0b1f57dcf60772b",
+    "semantic_hash": ""
   },
   "src/components/VisualDatePicker.tsx": {
     "mtime": 1791961143.0015776,
@@ -96,10 +96,10 @@
     "semantic_hash": "df3369963799e47ef5a77cdca932abf0"
   },
   "src/types/index.ts": {
-    "mtime": 1791961143.0083086,
-    "seen": 1791961423.07564,
-    "ast_hash": "06700486dcc33b23b8563d994cd90553",
-    "semantic_hash": "06700486dcc33b23b8563d994cd90553"
+    "mtime": 1791964632.6099946,
+    "seen": 1791965980.1100507,
+    "ast_hash": "2b9545b6c54068cf4e85af02d1e64943",
+    "semantic_hash": ""
   },
   "src/utils/dateUtils.ts": {
     "mtime": 1791961143.0083086,
@@ -183,6 +183,12 @@
     "mtime": 1791961143.0015776,
     "seen": 1791961801.8161051,
     "ast_hash": "6d5180a782d64c8cf51ba01c2a2184d8",
+    "semantic_hash": ""
+  },
+  "src/components/views/IncidenciasView.tsx": {
+    "mtime": 1791964546.162556,
+    "seen": 1791965980.1100507,
+    "ast_hash": "5953a7a4ac168a4cbd3b6daea95b7a59",
     "semantic_hash": ""
   }
 }

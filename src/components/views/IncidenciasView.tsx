@@ -21,6 +21,7 @@ interface IncidenciasViewProps {
   totalPages: number;
   totalIncidentsCount: number;
   absentCount: number;
+  onSort: (field: string) => void;
 }
 
 export function IncidenciasView({
@@ -42,6 +43,7 @@ export function IncidenciasView({
   totalPages,
   totalIncidentsCount,
   absentCount,
+  onSort,
 }: IncidenciasViewProps) {
   return (
     <>
@@ -164,12 +166,12 @@ export function IncidenciasView({
         <table className="nomina-table">
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>No.</th>
-              <th>Nombre</th>
-              <th>Turno</th>
-              <th>Tipo de Incidencia</th>
-              <th>Descripción</th>
+              <th onClick={() => onSort('date')} className="cursor-pointer select-none hover:text-sky-400">Fecha ↕</th>
+              <th onClick={() => onSort('workerNo')} className="cursor-pointer select-none hover:text-sky-400">No. ↕</th>
+              <th onClick={() => onSort('workerName')} className="cursor-pointer select-none hover:text-sky-400">Nombre ↕</th>
+              <th onClick={() => onSort('turno')} className="cursor-pointer select-none hover:text-sky-400">Turno ↕</th>
+              <th onClick={() => onSort('type')} className="cursor-pointer select-none hover:text-sky-400">Tipo de Incidencia ↕</th>
+              <th onClick={() => onSort('description')} className="cursor-pointer select-none hover:text-sky-400">Descripción ↕</th>
             </tr>
           </thead>
           <tbody>

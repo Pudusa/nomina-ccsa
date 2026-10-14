@@ -80,6 +80,14 @@ export default function App() {
       const month = parseInt(monthStr, 10);
       const daysInMonth = new Date(year, month, 0).getDate();
 
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yYyyy = yesterday.getFullYear();
+      const yMm = String(yesterday.getMonth() + 1).padStart(2, '0');
+      const yDd = String(yesterday.getDate()).padStart(2, '0');
+      const yesterdayStr = `${yYyyy}-${yMm}-${yDd}`;
+
       let startDay = 1;
       let endDay = daysInMonth;
 
@@ -94,7 +102,10 @@ export default function App() {
       const dateStrs: string[] = [];
       for (let d = startDay; d <= endDay; d++) {
         const dStr = String(d).padStart(2, '0');
-        dateStrs.push(`${incidentMonthYear}-${dStr}`);
+        const candidateDate = `${incidentMonthYear}-${dStr}`;
+        if (candidateDate <= yesterdayStr) {
+          dateStrs.push(candidateDate);
+        }
       }
 
       let currentShiftTemplates = shiftTemplates;
@@ -180,12 +191,6 @@ export default function App() {
       return true;
     });
   }, [incidentsList, incidentTypeFilter, incidentShiftFilter, incidentSearchTerm]);
-
-  const incidentTotalPages = Math.ceil(filteredIncidents.length / pageSize) || 1;
-  const paginatedIncidents = useMemo(() => {
-    const start = (incidentCurrentPage - 1) * pageSize;
-    return filteredIncidents.slice(start, start + pageSize);
-  }, [filteredIncidents, incidentCurrentPage, pageSize]);
 
   const absentIncidentsCount = useMemo(() => {
     return incidentsList.filter(i => i.type === 'Ausente').length;
@@ -374,17 +379,100 @@ export default function App() {
     });
   }, [uniqueWorkers, workerSearchTerm, selectedTurno, selectedDate]);
 
-  const totalPages = Math.ceil(filteredSummaries.length / pageSize) || 1;
+  // Estados y lógica de ordenamiento por columnas (por defecto ascendente al hacer clic)
+  const [attendanceSortField, setAttendanceSortField] = useState<string>('no');
+  const [workerSortField, setWorkerSortField] = useState<string>('no');
+  const [incidentSortField, setIncidentSortField] = useState<string>('date');
+
+  const sortedSummaries = useMemo(() => {
+    const list = [...filteredSummaries];
+    list.sort((a, b) => {
+      let valA: any = a[attendanceSortField as keyof WorkerDaySummary] ?? '';
+      let valB: any = b[attendanceSortField as keyof WorkerDaySummary] ?? '';
+
+      if (attendanceSortField === 'no') {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+      } else if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+      }
+
+      if (valA < valB) return -1;
+      if (valA > valB) return 1;
+      return 0;
+    });
+    return list;
+  }, [filteredSummaries, attendanceSortField]);
+
+  const sortedWorkers = useMemo(() => {
+    const list = [...filteredWorkers];
+    list.sort((a, b) => {
+      let valA: any;
+      let valB: any;
+
+      if (workerSortField === 'defaultTurno') {
+        valA = selectedDate ? getTurnoOnDate(a.defaultTurno, a.rules, selectedDate) : a.defaultTurno;
+        valB = selectedDate ? getTurnoOnDate(b.defaultTurno, b.rules, selectedDate) : b.defaultTurno;
+      } else if (workerSortField === 'rules') {
+        valA = a.rules.length;
+        valB = b.rules.length;
+      } else if (workerSortField === 'no') {
+        valA = Number(a.no) || 0;
+        valB = Number(b.no) || 0;
+      } else {
+        valA = a[workerSortField as keyof UniqueWorker] ?? '';
+        valB = b[workerSortField as keyof UniqueWorker] ?? '';
+      }
+
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return -1;
+      if (valA > valB) return 1;
+      return 0;
+    });
+    return list;
+  }, [filteredWorkers, workerSortField, selectedDate]);
+
+  const sortedIncidents = useMemo(() => {
+    const list = [...filteredIncidents];
+    list.sort((a, b) => {
+      let valA: any = a[incidentSortField as keyof IncidentItem] ?? '';
+      let valB: any = b[incidentSortField as keyof IncidentItem] ?? '';
+
+      if (incidentSortField === 'workerNo') {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+      } else if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+      }
+
+      if (valA < valB) return -1;
+      if (valA > valB) return 1;
+      return 0;
+    });
+    return list;
+  }, [filteredIncidents, incidentSortField]);
+
+  const totalPages = Math.ceil(sortedSummaries.length / pageSize) || 1;
   const paginatedSummaries = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredSummaries.slice(start, start + pageSize);
-  }, [filteredSummaries, currentPage, pageSize]);
+    return sortedSummaries.slice(start, start + pageSize);
+  }, [sortedSummaries, currentPage, pageSize]);
 
-  const workerTotalPages = Math.ceil(filteredWorkers.length / pageSize) || 1;
+  const workerTotalPages = Math.ceil(sortedWorkers.length / pageSize) || 1;
   const paginatedWorkers = useMemo(() => {
     const start = (workerCurrentPage - 1) * pageSize;
-    return filteredWorkers.slice(start, start + pageSize);
-  }, [filteredWorkers, workerCurrentPage, pageSize]);
+    return sortedWorkers.slice(start, start + pageSize);
+  }, [sortedWorkers, workerCurrentPage, pageSize]);
+
+  const incidentTotalPages = Math.ceil(sortedIncidents.length / pageSize) || 1;
+  const paginatedIncidents = useMemo(() => {
+    const start = (incidentCurrentPage - 1) * pageSize;
+    return sortedIncidents.slice(start, start + pageSize);
+  }, [sortedIncidents, incidentCurrentPage, pageSize]);
 
   const handleSaveTurnoRule = async () => {
     if (!editingWorker || !ruleStartDate) return;
@@ -652,7 +740,7 @@ export default function App() {
             setSelectedDate={setSelectedDate}
             availableDates={availableDates}
             workerSummaries={workerSummariesWithRest}
-            filteredSummaries={filteredSummaries}
+            filteredSummaries={sortedSummaries}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             currentPage={currentPage}
@@ -665,13 +753,14 @@ export default function App() {
             setSelectedAttendanceStatusFilter={setSelectedAttendanceStatusFilter}
             availableTurnos={availableTurnos}
             scheduledWorkersCount={scheduledWorkersCount}
+            onSort={setAttendanceSortField}
           />
         )}
 
         {isDataLoaded && !loading && currentView === 'trabajadores' && (
           <TrabajadoresView
             uniqueWorkers={uniqueWorkers}
-            filteredWorkers={filteredWorkers}
+            filteredWorkers={sortedWorkers}
             paginatedWorkers={paginatedWorkers}
             workerSearchTerm={workerSearchTerm}
             setWorkerSearchTerm={setWorkerSearchTerm}
@@ -682,6 +771,7 @@ export default function App() {
             workerCurrentPage={workerCurrentPage}
             setWorkerCurrentPage={setWorkerCurrentPage}
             workerTotalPages={workerTotalPages}
+            onSort={setWorkerSortField}
             onEditWorker={(worker, currentTurno) => {
               setEditingWorker(worker);
               const templateKeys = Object.keys(shiftTemplates);
@@ -728,13 +818,14 @@ export default function App() {
             setIncidentShiftFilter={setIncidentShiftFilter}
             availableTurnos={availableTurnos}
             incidents={incidentsList}
-            filteredIncidents={filteredIncidents}
+            filteredIncidents={sortedIncidents}
             paginatedIncidents={paginatedIncidents}
             currentPage={incidentCurrentPage}
             setCurrentPage={setIncidentCurrentPage}
             totalPages={incidentTotalPages}
             totalIncidentsCount={incidentsList.length}
             absentCount={absentIncidentsCount}
+            onSort={setIncidentSortField}
           />
         )}
       </main>

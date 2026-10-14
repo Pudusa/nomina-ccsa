@@ -20,6 +20,7 @@ interface AsistenciasViewProps {
   setSelectedAttendanceStatusFilter: (s: string) => void;
   availableTurnos: string[];
   scheduledWorkersCount: number;
+  onSort: (field: string) => void;
 }
 
 export function AsistenciasView({
@@ -40,6 +41,7 @@ export function AsistenciasView({
   setSelectedAttendanceStatusFilter,
   availableTurnos,
   scheduledWorkersCount,
+  onSort,
 }: AsistenciasViewProps) {
   return (
     <>
@@ -133,11 +135,11 @@ export function AsistenciasView({
         <table className="nomina-table">
           <thead>
             <tr>
-              <th>No.</th>
-              <th>Nombre</th>
-              <th>Turno</th>
-              <th>Entrada (Mañana / Tarde)</th>
-              <th>Salida (Mañana / Tarde)</th>
+              <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-sky-400">No. ↕</th>
+              <th onClick={() => onSort('nombre')} className="cursor-pointer select-none hover:text-sky-400">Nombre ↕</th>
+              <th onClick={() => onSort('turno')} className="cursor-pointer select-none hover:text-sky-400">Turno ↕</th>
+              <th onClick={() => onSort('entradaMañana')} className="cursor-pointer select-none hover:text-sky-400">Entrada (Mañana / Tarde) ↕</th>
+              <th onClick={() => onSort('salidaMañana')} className="cursor-pointer select-none hover:text-sky-400">Salida (Mañana / Tarde) ↕</th>
             </tr>
           </thead>
           <tbody>

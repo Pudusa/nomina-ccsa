@@ -5,7 +5,6 @@
   "6": "devDependencies",
   "7": "database.cjs",
   "8": ".oxlintrc.json",
-  "9": "scripts",
   "10": "attendance.service.js",
   "12": "tsconfig.json"
 }
