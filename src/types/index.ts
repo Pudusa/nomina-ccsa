@@ -11,6 +11,16 @@ export interface WorkerDaySummary {
   isRest?: boolean;
 }
 
+export interface IncidentItem {
+  id: string;
+  date: string;
+  workerNo: string;
+  workerName: string;
+  turno: string;
+  type: string;
+  description: string;
+}
+
 export interface ShiftRule {
   id: number;
   type: 'total' | 'parcial';

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json",
+  "general": {
+    "editor": "vscode"
+  },
+  "ui": {
+    "showLineNumbers": true,
+    "showCitations": false
+  },
+  "tools": {
+    "autoApprove": [
+      "read_file",
+      "read_many_files",
+      "search_file_content",
+      "glob"
+    ],
+    "summarizeOutput": {
+      "run_shell_command": {
+        "tokenBudget": 2000
+      }
+    }
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "read_file|list_directory",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/Bryan/.local/bin/graphify.EXE hook-guard gemini"
+          }
+        ]
+      }
+    ]
+  }
+}
