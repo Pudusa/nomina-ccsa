@@ -46,7 +46,7 @@ export function AsistenciasView({
       <div className="metrics-grid">
         <div className="metric-card">
           <h3>Día Seleccionado</h3>
-          <p className="metric-value" style={{ fontSize: '1.4rem' }}>
+          <p className="metric-value text-2xl font-bold text-sky-400">
             {selectedDate ? formatDisplayDate(selectedDate) : 'Ninguno'}
           </p>
         </div>
@@ -64,8 +64,8 @@ export function AsistenciasView({
         </div>
       </div>
 
-      <div className="controls-bar" style={{ justifyContent: 'flex-start', alignItems: 'flex-start', gap: '2rem', flexWrap: 'wrap' }}>
-        <div className="filter-box" style={{ width: '280px' }}>
+      <div className="controls-bar flex flex-wrap items-start justify-start gap-8 mb-6">
+        <div className="filter-box w-[280px]">
           <VisualDatePicker
             label="📅 Día de Asistencia:"
             value={selectedDate}
@@ -77,8 +77,8 @@ export function AsistenciasView({
           />
         </div>
 
-        <div className="filter-box" style={{ width: '220px', alignSelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
-          <label style={{ fontSize: '0.9rem', fontWeight: 500, color: '#cbd5e1' }}>
+        <div className="filter-box flex flex-col items-start gap-1.5 w-[220px] self-center">
+          <label className="text-sm font-medium text-slate-300">
             🔄 Filtrar por Turno:
           </label>
           <select
@@ -87,7 +87,7 @@ export function AsistenciasView({
               setSelectedAttendanceShiftFilter(e.target.value);
               setCurrentPage(1);
             }}
-            style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid #475569', backgroundColor: '#1e293b', color: '#f8fafc', outline: 'none', fontSize: '0.95rem' }}
+            className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-3 text-slate-100 text-sm outline-none focus:border-sky-400"
           >
             <option value="ALL">Todos los turnos</option>
             {availableTurnos.map((t) => (
@@ -98,8 +98,8 @@ export function AsistenciasView({
           </select>
         </div>
 
-        <div className="filter-box" style={{ width: '200px', alignSelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
-          <label style={{ fontSize: '0.9rem', fontWeight: 500, color: '#cbd5e1' }}>
+        <div className="filter-box flex flex-col items-start gap-1.5 w-[200px] self-center">
+          <label className="text-sm font-medium text-slate-300">
             👤 Estado de Asistencia:
           </label>
           <select
@@ -108,7 +108,7 @@ export function AsistenciasView({
               setSelectedAttendanceStatusFilter(e.target.value);
               setCurrentPage(1);
             }}
-            style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid #475569', backgroundColor: '#1e293b', color: '#f8fafc', outline: 'none', fontSize: '0.95rem' }}
+            className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-3 text-slate-100 text-sm outline-none focus:border-sky-400"
           >
             <option value="ALL">Todos</option>
             <option value="PRESENT">Presentes</option>
@@ -116,7 +116,7 @@ export function AsistenciasView({
           </select>
         </div>
 
-        <div className="search-box" style={{ alignSelf: 'center' }}>
+        <div className="search-box self-center">
           <input
             type="text"
             placeholder="Buscar por Nombre o No. de empleado..."
@@ -160,17 +160,17 @@ export function AsistenciasView({
                       <span className="badge-turno">{worker.turno}</span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div className="flex flex-col gap-1">
                         {hasMark ? (
                           <>
                             {worker.entradaMañana && (
                               <span className="badge-dept" title="Entrada por la Mañana">
-                                🟢 {formatTime(worker.entradaMañana)} <small style={{ color: '#38bdf8' }}>(Mañana)</small>
+                                🟢 {formatTime(worker.entradaMañana)} <small className="text-sky-400">(Mañana)</small>
                               </span>
                             )}
                             {worker.entradaTarde && (
                               <span className="badge-dept" title="Entrada por la Tarde">
-                                🟡 {formatTime(worker.entradaTarde)} <small style={{ color: '#fbbf24' }}>(Tarde)</small>
+                                🟡 {formatTime(worker.entradaTarde)} <small className="text-amber-400">(Tarde)</small>
                               </span>
                             )}
                             {!worker.entradaMañana && !worker.entradaTarde && worker.marca1 && (
@@ -178,28 +178,28 @@ export function AsistenciasView({
                             )}
                           </>
                         ) : worker.isRest ? (
-                          <span style={{ color: '#94a3b8', fontWeight: 500, backgroundColor: '#334155', padding: '0.2rem 0.5rem', borderRadius: '4px', display: 'inline-block', width: 'fit-content' }}>
+                          <span className="inline-block w-fit bg-slate-700 text-slate-300 font-medium px-2 py-0.5 rounded text-xs">
                             💤 Descanso
                           </span>
                         ) : (
-                          <span style={{ color: '#dc2626', fontWeight: 600, backgroundColor: '#fee2e2', padding: '0.2rem 0.5rem', borderRadius: '4px', display: 'inline-block', width: 'fit-content' }}>
+                          <span className="inline-block w-fit bg-rose-100 text-rose-600 font-semibold px-2 py-0.5 rounded text-xs">
                             ❌ Ausente
                           </span>
                         )}
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div className="flex flex-col gap-1">
                         {hasMark ? (
                           <>
                             {worker.salidaMañana && (
                               <span className="badge-verif" title="Salida por la Mañana">
-                                🌙 {formatTime(worker.salidaMañana)} <small style={{ color: '#38bdf8' }}>(Mañana)</small>
+                                🌙 {formatTime(worker.salidaMañana)} <small className="text-sky-400">(Mañana)</small>
                               </span>
                             )}
                             {worker.salidaTarde && (
                               <span className="badge-verif" title="Salida por la Tarde">
-                                🔴 {formatTime(worker.salidaTarde)} <small style={{ color: '#f87171' }}>(Tarde)</small>
+                                🔴 {formatTime(worker.salidaTarde)} <small className="text-rose-400">(Tarde)</small>
                               </span>
                             )}
                             {!worker.salidaMañana && !worker.salidaTarde && worker.marca2 && (
@@ -207,7 +207,7 @@ export function AsistenciasView({
                             )}
                           </>
                         ) : (
-                          <span style={{ color: '#94a3b8' }}>-</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </div>
                     </td>

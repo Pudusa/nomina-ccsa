@@ -45,7 +45,7 @@ export function TrabajadoresView({
         </div>
       </div>
 
-      <div className="controls-bar" style={{ justifyContent: 'flex-start', gap: '2rem' }}>
+      <div className="controls-bar flex flex-wrap items-start justify-start gap-8 mb-6">
         <div className="search-box">
           <input
             type="text"

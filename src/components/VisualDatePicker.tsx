@@ -71,13 +71,12 @@ export function VisualDatePicker({ label, value, onChange, minDate, availableDat
     <div className="visual-date-picker" ref={containerRef}>
       <label className="vdp-label">{label}</label>
       <div
-        className="vdp-header-bar"
+        className="vdp-header-bar cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
-        style={{ cursor: 'pointer' }}
         title="Hacer clic para abrir/cerrar calendario"
       >
         <span className="vdp-selected-display">📅 {formatDisplayDate(value || todayStr)}</span>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             className="vdp-today-btn"
@@ -92,7 +91,7 @@ export function VisualDatePicker({ label, value, onChange, minDate, availableDat
           >
             Hoy
           </button>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{isOpen ? '▲' : '▼'}</span>
+          <span className="text-xs text-slate-400">{isOpen ? '▲' : '▼'}</span>
         </div>
       </div>
 

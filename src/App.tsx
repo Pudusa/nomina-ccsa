@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import './App.css';
-import type { WorkerDaySummary, UniqueWorker, DayConfig } from './types';
+import type { WorkerDaySummary, UniqueWorker, DayConfig, IncidentItem } from './types';
 import { getTodayDateString, getTurnoOnDate, WEEKDAY_NAMES } from './utils/dateUtils';
 import { API_BASE } from './constants';
 import { AsistenciasView } from './components/views/AsistenciasView';
 import { TrabajadoresView } from './components/views/TrabajadoresView';
 import { TurnosView } from './components/views/TurnosView';
+import { IncidenciasView } from './components/views/IncidenciasView';
 import { CreateShiftModal } from './components/modals/CreateShiftModal';
 import { EditDayModal } from './components/modals/EditDayModal';
 import { EditWorkerModal } from './components/modals/EditWorkerModal';
@@ -52,8 +53,143 @@ export default function App() {
   const [ruleStartDate, setRuleStartDate] = useState<string>('');
   const [ruleEndDate, setRuleEndDate] = useState<string>('');
 
-  const [currentView, setCurrentView] = useState<'asistencias' | 'trabajadores' | 'turnos'>('asistencias');
+  const [currentView, setCurrentView] = useState<'asistencias' | 'trabajadores' | 'turnos' | 'incidencias'>('asistencias');
+
+  // Estados para la vista de Incidencias
+  const [incidentMonthYear, setIncidentMonthYear] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
+  const [incidentPeriod, setIncidentPeriod] = useState<'full' | 'q1' | 'q2'>('full');
+  const [incidentTypeFilter, setIncidentTypeFilter] = useState<string>('ALL');
+  const [incidentSearchTerm, setIncidentSearchTerm] = useState<string>('');
+  const [incidentShiftFilter, setIncidentShiftFilter] = useState<string>('ALL');
+  const [incidentCurrentPage, setIncidentCurrentPage] = useState<number>(1);
+  const [incidentsList, setIncidentsList] = useState<IncidentItem[]>([]);
   const pageSize = 15;
+
+  // Efecto para calcular incidencias (ausencias) según el mes y periodo (mes completo o quincena)
+  useEffect(() => {
+    if (!isDataLoaded || !incidentMonthYear || currentView !== 'incidencias') return;
+
+    const fetchIncidentsForRange = async () => {
+      const [yearStr, monthStr] = incidentMonthYear.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      let startDay = 1;
+      let endDay = daysInMonth;
+
+      if (incidentPeriod === 'q1') {
+        startDay = 1;
+        endDay = 15;
+      } else if (incidentPeriod === 'q2') {
+        startDay = 16;
+        endDay = daysInMonth;
+      }
+
+      const dateStrs: string[] = [];
+      for (let d = startDay; d <= endDay; d++) {
+        const dStr = String(d).padStart(2, '0');
+        dateStrs.push(`${incidentMonthYear}-${dStr}`);
+      }
+
+      let currentShiftTemplates = shiftTemplates;
+      try {
+        const res = await fetch(`${API_BASE}/api/shift-templates?year_month=${incidentMonthYear}`);
+        const data = await res.json();
+        currentShiftTemplates = data;
+      } catch (e) {}
+
+      const allIncidents: IncidentItem[] = [];
+
+      const promises = dateStrs.map(async (dateStr) => {
+        try {
+          const res = await fetch(`${API_BASE}/api/attendance?date=${dateStr}`);
+          const summaries: WorkerDaySummary[] = await res.json();
+          
+          const dateObj = new Date(dateStr + 'T00:00:00');
+          const dayNum = dateObj.getDate();
+          const dayIndex = (dayNum - 1) % 31;
+
+          summaries.forEach((w) => {
+            const hasMark = Boolean(
+              w.marca1 ||
+              w.marca2 ||
+              w.entradaMañana ||
+              w.salidaMañana ||
+              w.entradaTarde ||
+              w.salidaTarde
+            );
+
+            // Verificar si es día de descanso (P)
+            let isRestDay = false;
+            const template = currentShiftTemplates[w.turno];
+            if (template && Array.isArray(template) && template[dayIndex]) {
+              const hours = template[dayIndex].hours;
+              if (String(hours).toLowerCase() === 'p') {
+                isRestDay = true;
+              }
+            }
+
+            // Si no tiene marca y no es día de descanso, es una ausencia
+            if (!hasMark && !isRestDay) {
+              allIncidents.push({
+                id: `${dateStr}-${w.no}`,
+                date: dateStr,
+                workerNo: w.no,
+                workerName: w.nombre || 'Desconocido',
+                turno: w.turno || 'Sin turno',
+                type: 'Ausente',
+                description: 'Sin registros de asistencia en jornada laboral',
+              });
+            }
+          });
+        } catch (err) {
+          console.error(`Error al obtener asistencia para ${dateStr}:`, err);
+        }
+      });
+
+      await Promise.all(promises);
+
+      // Ordenar por fecha descendente y número de empleado
+      allIncidents.sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return Number(a.workerNo) - Number(b.workerNo) || a.workerNo.localeCompare(b.workerNo);
+      });
+
+      setIncidentsList(allIncidents);
+    };
+
+    fetchIncidentsForRange();
+  }, [incidentMonthYear, incidentPeriod, isDataLoaded, currentView, shiftTemplates]);
+
+  const filteredIncidents = useMemo(() => {
+    return incidentsList.filter((inc) => {
+      if (incidentTypeFilter === 'ABSENT' && inc.type !== 'Ausente') return false;
+      if (incidentShiftFilter !== 'ALL' && inc.turno !== incidentShiftFilter) return false;
+      if (incidentSearchTerm.trim()) {
+        const term = incidentSearchTerm.toLowerCase();
+        const matchName = inc.workerName.toLowerCase().includes(term);
+        const matchNo = inc.workerNo.toLowerCase().includes(term);
+        if (!matchName && !matchNo) return false;
+      }
+      return true;
+    });
+  }, [incidentsList, incidentTypeFilter, incidentShiftFilter, incidentSearchTerm]);
+
+  const incidentTotalPages = Math.ceil(filteredIncidents.length / pageSize) || 1;
+  const paginatedIncidents = useMemo(() => {
+    const start = (incidentCurrentPage - 1) * pageSize;
+    return filteredIncidents.slice(start, start + pageSize);
+  }, [filteredIncidents, incidentCurrentPage, pageSize]);
+
+  const absentIncidentsCount = useMemo(() => {
+    return incidentsList.filter(i => i.type === 'Ausente').length;
+  }, [incidentsList]);
 
   const fetchShiftTemplates = async (ym?: string) => {
     try {
@@ -447,7 +583,7 @@ export default function App() {
       <nav className="navbar">
         <div className="navbar-brand">
           <span className="brand-icon">🗄️</span>
-          <span className="brand-title">Sistema de Nómina (Base de Datos SQLite)</span>
+          <span className="brand-title">Sistema de Nómina</span>
         </div>
         {isDataLoaded && (
           <ul className="navbar-nav">
@@ -476,9 +612,17 @@ export default function App() {
               </button>
             </li>
             <li>
+              <button
+                className={`nav-link ${currentView === 'incidencias' ? 'active' : ''}`}
+                onClick={() => setCurrentView('incidencias')}
+              >
+                ⚠️ Incidencias
+              </button>
+            </li>
+            <li>
               <label className="nav-upload-btn" title="Cargar otro archivo Excel">
                 📁 Cambiar Archivo
-                <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} style={{ display: 'none' }} />
+                <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
               </label>
             </li>
           </ul>
@@ -567,6 +711,30 @@ export default function App() {
               setModalDayHours(String(config.hours));
               setModalMarkDirection(config.markDirection);
             }}
+          />
+        )}
+
+        {isDataLoaded && !loading && currentView === 'incidencias' && (
+          <IncidenciasView
+            selectedMonthYear={incidentMonthYear}
+            setSelectedMonthYear={setIncidentMonthYear}
+            incidentPeriod={incidentPeriod}
+            setIncidentPeriod={setIncidentPeriod}
+            incidentTypeFilter={incidentTypeFilter}
+            setIncidentTypeFilter={setIncidentTypeFilter}
+            incidentSearchTerm={incidentSearchTerm}
+            setIncidentSearchTerm={setIncidentSearchTerm}
+            incidentShiftFilter={incidentShiftFilter}
+            setIncidentShiftFilter={setIncidentShiftFilter}
+            availableTurnos={availableTurnos}
+            incidents={incidentsList}
+            filteredIncidents={filteredIncidents}
+            paginatedIncidents={paginatedIncidents}
+            currentPage={incidentCurrentPage}
+            setCurrentPage={setIncidentCurrentPage}
+            totalPages={incidentTotalPages}
+            totalIncidentsCount={incidentsList.length}
+            absentCount={absentIncidentsCount}
           />
         )}
       </main>

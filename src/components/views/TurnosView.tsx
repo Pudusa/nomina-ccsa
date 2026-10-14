@@ -36,8 +36,8 @@ export function TurnosView({
       <h2>📅 Calendario de Turnos y Horas Trabajadas (Base de Datos SQLite)</h2>
       <p className="hint-text">💡 Haz clic directamente en cualquier tarjeta de día para editar sus horas o configurar su marcaje. También puedes crear nuevos turnos.</p>
 
-      <div className="controls-bar" style={{ justifyContent: 'space-between', gap: '2rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="controls-bar flex flex-wrap items-center justify-between gap-8 mb-6">
+        <div className="flex flex-wrap items-center gap-8">
           <div className="filter-box">
             <label htmlFor="month-select">📅 Mes:</label>
             <input
@@ -49,7 +49,7 @@ export function TurnosView({
             />
           </div>
 
-          <div className="filter-box" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="filter-box flex items-center gap-2">
             <label htmlFor="shift-template-select">⚙️ Turno:</label>
             <select
               id="shift-template-select"
@@ -68,8 +68,7 @@ export function TurnosView({
             </select>
             {selectedShiftTemplate && selectedShiftTemplate !== 'Sin turno' && (
               <button
-                className="btn-delete-rule"
-                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                className="btn-delete-rule px-3 py-1.5 text-xs"
                 onClick={() => onDeleteShift(selectedShiftTemplate)}
                 title="Eliminar turno actual"
               >
@@ -79,7 +78,7 @@ export function TurnosView({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="flex items-center gap-4">
           <button
             className="btn-save"
             onClick={onSaveAllChanges}
@@ -96,7 +95,7 @@ export function TurnosView({
         </div>
       </div>
 
-      <div className="metrics-grid" style={{ marginBottom: '1.5rem' }}>
+      <div className="metrics-grid mb-6">
         <div className="metric-card">
           <h3>Horas (Días 1 - 15: 15 días)</h3>
           <p className="metric-value">{calendarData.hours1_15} hrs</p>
@@ -107,7 +106,7 @@ export function TurnosView({
         </div>
         <div className="metric-card">
           <h3>Total Horas al Mes ({calendarData.daysInMonth} días)</h3>
-          <p className="metric-value" style={{ color: '#4ade80' }}>{calendarData.totalMonthHours} hrs</p>
+          <p className="metric-value text-emerald-400">{calendarData.totalMonthHours} hrs</p>
         </div>
       </div>
 
