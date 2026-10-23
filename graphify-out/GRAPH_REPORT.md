@@ -1,7 +1,7 @@
-# Graph Report - nomina-ccsa  (2026-10-14)
+# Graph Report - nomina-ccsa  (2026-10-23)
 
 ## Corpus Check
-- 29 files · ~17,514 words
+- 29 files · ~17,562 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: .xls 2, .css 2, (none) 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `52a3c22b`
+- Built from commit: `c6020432`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

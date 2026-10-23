@@ -1,0 +1,9 @@
+{
+  "2": "compilerOptions",
+  "4": "compilerOptions",
+  "6": "devDependencies",
+  "7": "database.cjs",
+  "8": ".oxlintrc.json",
+  "10": "attendance.service.js",
+  "12": "tsconfig.json"
+}

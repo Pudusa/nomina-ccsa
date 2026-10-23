@@ -47,24 +47,24 @@ export function IncidenciasView({
 }: IncidenciasViewProps) {
   return (
     <>
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <h3>Total de Incidencias</h3>
-          <p className="metric-value">{totalIncidentsCount}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-slate-900 border border-slate-700 rounded-lg px-6 py-2.5 flex items-center justify-between shadow-sm">
+          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total de Incidencias</span>
+          <span className="text-base font-bold text-sky-400">{totalIncidentsCount}</span>
         </div>
-        <div className="metric-card">
-          <h3>Ausencias Detectadas</h3>
-          <p className="metric-value text-rose-400">{absentCount}</p>
+        <div className="bg-slate-900 border border-slate-700 rounded-lg px-6 py-2.5 flex items-center justify-between shadow-sm">
+          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Ausencias Detectadas</span>
+          <span className="text-base font-bold text-rose-400">{absentCount}</span>
         </div>
-        <div className="metric-card">
-          <h3>Periodo Analizado</h3>
-          <p className="metric-value text-lg">
+        <div className="bg-slate-900 border border-slate-700 rounded-lg px-6 py-2.5 flex items-center justify-between shadow-sm">
+          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Periodo Analizado</span>
+          <span className="text-xs font-semibold text-slate-200">
             {incidentPeriod === 'full' ? 'Mes Completo' : incidentPeriod === 'q1' ? '1era Quincena (1-15)' : '2da Quincena (16-Fin)'}
-          </p>
+          </span>
         </div>
-        <div className="metric-card">
-          <h3>Resultados Filtrados</h3>
-          <p className="metric-value">{filteredIncidents.length}</p>
+        <div className="bg-slate-900 border border-slate-700 rounded-lg px-6 py-2.5 flex items-center justify-between shadow-sm">
+          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Resultados Filtrados</span>
+          <span className="text-base font-bold text-sky-400">{filteredIncidents.length}</span>
         </div>
       </div>
 
@@ -160,24 +160,61 @@ export function IncidenciasView({
             className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-3 text-slate-100 text-sm outline-none focus:border-sky-400"
           />
         </div>
+
+        {/* Botón de Impresión */}
+        <div className="filter-box flex-1 min-w-[220px] flex flex-col items-start justify-end gap-1.5">
+          <label className="text-sm font-medium text-slate-300 opacity-0 hidden sm:block">
+            Acción:
+          </label>
+          <button
+            onClick={() => window.print()}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+          >
+            🖨️ Imprimir Listado
+          </button>
+        </div>
       </div>
 
       <div className="table-responsive">
         <table className="nomina-table">
           <thead>
             <tr>
-              <th onClick={() => onSort('date')} className="cursor-pointer select-none hover:text-sky-400">Fecha ↕</th>
-              <th onClick={() => onSort('workerNo')} className="cursor-pointer select-none hover:text-sky-400">No. ↕</th>
-              <th onClick={() => onSort('workerName')} className="cursor-pointer select-none hover:text-sky-400">Nombre ↕</th>
-              <th onClick={() => onSort('turno')} className="cursor-pointer select-none hover:text-sky-400">Turno ↕</th>
-              <th onClick={() => onSort('type')} className="cursor-pointer select-none hover:text-sky-400">Tipo de Incidencia ↕</th>
-              <th onClick={() => onSort('description')} className="cursor-pointer select-none hover:text-sky-400">Descripción ↕</th>
+              <th onClick={() => onSort('date')} className="cursor-pointer select-none hover:text-sky-400">Fecha</th>
+              <th onClick={() => onSort('workerNo')} className="cursor-pointer select-none hover:text-sky-400">No.</th>
+              <th onClick={() => onSort('workerName')} className="cursor-pointer select-none hover:text-sky-400">Nombre</th>
+              <th onClick={() => onSort('turno')} className="cursor-pointer select-none hover:text-sky-400">Turno</th>
+              <th onClick={() => onSort('type')} className="cursor-pointer select-none hover:text-sky-400">Tipo de Incidencia</th>
+              <th onClick={() => onSort('description')} className="cursor-pointer select-none hover:text-sky-400">Descripción</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="screen-only">
             {paginatedIncidents.length > 0 ? (
               paginatedIncidents.map((incident) => (
                 <tr key={incident.id}>
+                  <td>{formatDisplayDate(incident.date)}</td>
+                  <td><strong>{incident.workerNo}</strong></td>
+                  <td>{incident.workerName}</td>
+                  <td>{incident.turno}</td>
+                  <td>
+                    <span className="status-badge absent bg-rose-500/20 text-rose-400 px-3 py-1 rounded-full text-xs font-semibold">
+                      🔴 {incident.type}
+                    </span>
+                  </td>
+                  <td>{incident.description}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="text-center py-12 text-slate-400">
+                  No se encontraron incidencias en el periodo y filtros seleccionados.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          <tbody className="print-only">
+            {filteredIncidents.length > 0 ? (
+              filteredIncidents.map((incident) => (
+                <tr key={'print-' + incident.id}>
                   <td>{formatDisplayDate(incident.date)}</td>
                   <td><strong>{incident.workerNo}</strong></td>
                   <td>{incident.workerName}</td>
