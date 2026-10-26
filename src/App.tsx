@@ -31,6 +31,17 @@ export default function App() {
   const [selectedTurno, setSelectedTurno] = useState<string>('ALL');
   const [workerCurrentPage, setWorkerCurrentPage] = useState<number>(1);
 
+  // Estado para el mes de trabajadores (si hoy es día 1, mostrar mes anterior; si no, mes actual)
+  const [workerMonthYear, setWorkerMonthYear] = useState<string>(() => {
+    const d = new Date();
+    if (d.getDate() === 1) {
+      d.setMonth(d.getMonth() - 1);
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
+
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(() => {
     const d = new Date();
     const year = d.getFullYear();
@@ -772,6 +783,9 @@ export default function App() {
             setWorkerCurrentPage={setWorkerCurrentPage}
             workerTotalPages={workerTotalPages}
             onSort={setWorkerSortField}
+            workerMonthYear={workerMonthYear}
+            setWorkerMonthYear={setWorkerMonthYear}
+            shiftTemplates={shiftTemplates}
             onEditWorker={(worker, currentTurno) => {
               setEditingWorker(worker);
               const templateKeys = Object.keys(shiftTemplates);
