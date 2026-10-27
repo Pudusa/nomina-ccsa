@@ -9,6 +9,7 @@ export interface WorkerDaySummary {
   salidaTarde?: string | null;
   turno: string;
   isRest?: boolean;
+  numMarcas?: number;
 }
 
 export interface IncidentItem {
@@ -39,6 +40,7 @@ export interface UniqueWorker {
 export interface DayConfig {
   hours: number | string;
   markDirection: 'entrada' | 'salida';
+  numMarcas?: number;
 }
 
 export interface VisualDatePickerProps {

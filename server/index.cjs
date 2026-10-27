@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const db = require('./database.cjs');
+const attendanceService = require('./services/attendance.service.cjs');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -208,79 +209,9 @@ function getTurnoOnDate(defaultTurno, rules, dateStr) {
   return resolved;
 }
 
-// Helper to filter out duplicate/accidental double punches within a 30-minute window
-function filterDuplicatePunches(times) {
-  if (!times || times.length <= 1) return times;
-  const filtered = [times[0]];
-  const MIN_GAP_MS = 30 * 60 * 1000;
-
-  for (let i = 1; i < times.length; i++) {
-    const lastAccepted = filtered[filtered.length - 1];
-    const current = times[i];
-    if (current.getTime() - lastAccepted.getTime() >= MIN_GAP_MS) {
-      filtered.push(current);
-    }
-  }
-  return filtered;
-}
-
-// Helper to classify punches
-function classifyPunches(times, turno, ruleFirstMarkDir) {
-  let entradaMañana = null;
-  let salidaMañana = null;
-  let entradaTarde = null;
-  let salidaTarde = null;
-
-  if (!times || times.length === 0) {
-    return { entradaMañana, salidaMañana, entradaTarde, salidaTarde, marca1: null, marca2: null };
-  }
-
-  const tLower = (turno || '').toLowerCase();
-  const isNightOrAfternoon = tLower.includes('turno 2') || tLower.includes('nocturno') || tLower.includes('vespertino');
-  const isSalidaFirst = ruleFirstMarkDir === 'salida' || isNightOrAfternoon;
-
-  const marca1 = times[0] ? times[0].toISOString() : null;
-  const marca2 = times.length > 1 ? times[1].toISOString() : null;
-
-  if (!isSalidaFirst) {
-    // Normal: First is Entrada, Second is Salida
-    if (times.length > 0) {
-      const t = times[0];
-      const timeDec = t.getHours() + t.getMinutes() / 60;
-      if (timeDec < 12.5) entradaMañana = t.toISOString();
-      else entradaTarde = t.toISOString();
-    }
-    if (times.length > 1) {
-      const t = times[times.length - 1];
-      const timeDec = t.getHours() + t.getMinutes() / 60;
-      if (timeDec < 12.5) salidaMañana = t.toISOString();
-      else salidaTarde = t.toISOString();
-    }
-  } else {
-    // Salida First: First is Salida, Second is Entrada
-    if (times.length > 0) {
-      const t = times[0];
-      const timeDec = t.getHours() + t.getMinutes() / 60;
-      if (timeDec < 12.5) salidaMañana = t.toISOString();
-      else salidaTarde = t.toISOString();
-    }
-    if (times.length > 1) {
-      const t = times[1];
-      const timeDec = t.getHours() + t.getMinutes() / 60;
-      if (timeDec < 12.5) entradaMañana = t.toISOString();
-      else entradaTarde = t.toISOString();
-    }
-  }
-
-  return {
-    entradaMañana,
-    salidaMañana,
-    entradaTarde,
-    salidaTarde,
-    marca1,
-    marca2,
-  };
-}
+// Helpers delegated to attendanceService
+const filterDuplicatePunches = attendanceService.filterDuplicatePunches;
+const classifyPunches = attendanceService.classifyPunches;
 
 // 3. Get all workers with their rules
 app.get('/api/workers', (req, res) => {
@@ -372,9 +303,11 @@ app.get('/api/shift-templates', (req, res) => {
           result[t.name] = parsed.map(item => {
             const hours = Array.isArray(item) ? item[0] : item.hours;
             const markDirection = Array.isArray(item) ? item[1] : item.markDirection;
+            const numMarcas = Array.isArray(item) ? item[3] : (item.numMarcas !== undefined ? item.numMarcas : 2);
             return {
               hours: isNaN(Number(hours)) ? hours : Number(hours),
               markDirection: markDirection || 'entrada',
+              numMarcas: numMarcas !== undefined ? Number(numMarcas) : 2,
             };
           });
         } catch (e) {
@@ -407,13 +340,14 @@ app.post('/api/shift-templates', (req, res) => {
     const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(name);
     const shiftId = templateRow.id;
 
-    // Tuple array format: [ [hours, markDirection, dayIndex], ... ]
+    // Tuple array format: [ [hours, markDirection, dayIndex, numMarcas], ... ]
     const tuples = days.map((d, idx) => {
       const item = d || {};
       return [
         item.hours !== undefined ? item.hours : 'P',
         item.markDirection || 'entrada',
-        item.dayIndex !== undefined ? item.dayIndex : idx
+        item.dayIndex !== undefined ? item.dayIndex : idx,
+        item.numMarcas !== undefined ? Number(item.numMarcas) : 2
       ];
     });
 
@@ -501,6 +435,7 @@ app.get('/api/attendance', (req, res) => {
       // Check unique shift distribution for specific month with BASE fallback
       const templateRow = db.prepare('SELECT id FROM shift_templates WHERE name = ?').get(turno);
       let templateMarkDir = 'entrada';
+      let templateNumMarks = 2;
 
       if (templateRow) {
         let dist = db.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(templateRow.id, yearMonth);
@@ -514,6 +449,8 @@ app.get('/api/attendance', (req, res) => {
             if (dayItem) {
               const markDir = Array.isArray(dayItem) ? dayItem[1] : dayItem.markDirection;
               if (markDir) templateMarkDir = markDir;
+              const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
+              if (numMarks !== undefined) templateNumMarks = Number(numMarks) || 2;
             }
           } catch (e) {}
         }
@@ -532,7 +469,7 @@ app.get('/api/attendance', (req, res) => {
       }
 
       const cleanedTimes = filterDuplicatePunches(times);
-      const classified = classifyPunches(cleanedTimes, turno, ruleFirstMarkDir);
+      const classified = classifyPunches(cleanedTimes, turno, ruleFirstMarkDir, templateNumMarks);
 
       summaries.push({
         no,
@@ -544,6 +481,7 @@ app.get('/api/attendance', (req, res) => {
         entradaTarde: classified.entradaTarde,
         salidaTarde: classified.salidaTarde,
         turno,
+        numMarcas: templateNumMarks,
       });
     });
 

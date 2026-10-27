@@ -9,6 +9,8 @@ interface EditDayModalProps {
   setModalDayHours: (val: string) => void;
   modalMarkDirection: 'entrada' | 'salida';
   setModalMarkDirection: (val: 'entrada' | 'salida') => void;
+  modalNumMarcas: number;
+  setModalNumMarcas: (val: number) => void;
   onSave: () => void;
 }
 
@@ -21,6 +23,8 @@ export function EditDayModal({
   setModalDayHours,
   modalMarkDirection,
   setModalMarkDirection,
+  modalNumMarcas,
+  setModalNumMarcas,
   onSave,
 }: EditDayModalProps) {
   if (!editingDay) return null;
@@ -60,6 +64,21 @@ export function EditDayModal({
           </select>
           <small className="modal-hint">
             Define si el primer marcaje del día es una Entrada o una Salida para evitar confusión en turnos nocturnos.
+          </small>
+        </div>
+
+        <div className="modal-field">
+          <label htmlFor="modal-day-num-marcas">Número de marcas esperadas:</label>
+          <select
+            id="modal-day-num-marcas"
+            value={modalNumMarcas}
+            onChange={(e) => setModalNumMarcas(Number(e.target.value))}
+          >
+            <option value={2}>2 Marcas (Estándar: Entrada y Salida)</option>
+            <option value={1}>1 Marca (Entrada o Salida única)</option>
+          </select>
+          <small className="modal-hint">
+            Selecciona 1 marca para días de entrada vespertina o salida matutina única (la otra marca se considerará descanso).
           </small>
         </div>
 

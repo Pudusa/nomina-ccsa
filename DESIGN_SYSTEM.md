@@ -1,76 +1,50 @@
-# Sistema de Diseño y Experiencia de Usuario (UX/UI) - Nómina CCSA
+# Sistema de Diseño y Experiencia de Usuario (UX/UI) - Nómina CCSA (Escritorio Pro & Accesibilidad)
 
-Este documento define la identidad visual, paleta de colores, tipografía, componentes y lineamientos de UX/UI para el sistema de nómina y asistencia **Nómina CCSA**, tras la migración a **Tailwind CSS v4** y la eliminación de estilos en línea.
-
----
-
-## 1. Fundamentos Tipográficos
-
-- **Tipografía Principal (Sans):** Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif.
-- **Tipografía Monospaced (Mono):** JetBrains Mono, ui-monospace, Consolas, monospace.
-- **Escala Modular:**
-  - `text-xs`: 12px / 16px (Badges, etiquetas secundarias)
-  - `text-sm`: 14px / 20px (Texto de tablas, inputs, botones secundarios)
-  - `text-base`: 16px / 24px (Texto general, párrafos)
-  - `text-lg`: 18px / 28px (Subtítulos de tarjetas)
-  - `text-xl`: 20px / 28px (Encabezados de sección)
-  - `text-2xl`: 24px / 32px (Títulos de vistas)
-  - `text-3xl`: 30px / 36px (Títulos principales / modales)
+Este documento define la identidad visual, paleta de colores, tipografía, componentes y lineamientos de UX/UI para el sistema de escritorio **Nómina CCSA**, optimizado para el uso exclusivo en equipos de escritorio y diseñado con un enfoque accesible para adultos mayores (alto contraste, tamaños de fuente grandes y espacios amplios).
 
 ---
 
-## 2. Paleta de Colores (Modo Claro y Oscuro)
+## 1. Fundamentos Tipográficos y Accesibilidad
 
-La paleta está diseñada con un enfoque profesional, corporativo y accesible (cumpliendo con WCAG AA).
-
-### Modo Claro (Light Mode)
-- **Fondo General (`bg-slate-50`):** `#f8fafc`
-- **Fondo de Superficies/Tarjetas (`bg-white`):** `#ffffff`
-- **Bordes (`border-slate-200`):** `#e2e8f0`
-- **Texto Principal (`text-slate-800`):** `#1e293b`
-- **Texto Secundario (`text-slate-500`):** `#64748b`
-- **Color Primario / Acento (`indigo-600`):** `#4f46e5` (Hover: `indigo-700` `#4338ca`)
-- **Éxito / Asistencia (`emerald-600`):** `#059669` (Fondo: `emerald-50` `#ecfdf5`)
-- **Alerta / Incidencia (`amber-600`):** `#d97706` (Fondo: `amber-50` `#fffbeb`)
-- **Peligro / Falta (`rose-600`):** `#e11d48` (Fondo: `rose-50` `#fff1f2`)
-
-### Modo Oscuro (Dark Mode)
-- **Fondo General (`dark:bg-slate-950`):** `#020617`
-- **Fondo de Superficies/Tarjetas (`dark:bg-slate-900`):** `#0f172a`
-- **Bordes (`dark:border-slate-800`):** `#1e293b`
-- **Texto Principal (`dark:text-slate-100`):** `#f1f5f9`
-- **Texto Secundario (`dark:text-slate-400`):** `#94a3b8`
-- **Color Primario / Acento (`dark:bg-indigo-500`):** `#6366f1`
+- **Tipografía Principal:** Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif.
+- **Tamaños y Pesos:**
+  - Tamaños de fuente aumentados (`16px` a `1.3rem`) para garantizar legibilidad óptima.
+  - Pesos fuertes (`font-semibold`, `font-bold`, `font-extrabold`) en textos principales, horas y nombres para evitar fatiga visual.
 
 ---
 
-## 3. Componentes y Patrones UI
+## 2. Paleta de Colores (Gris Suave & Verde Profesional de Alto Contraste)
+
+### Fondo y Superficies
+- **Fondo General (`#f1f5f9`):** Gris suave que elimina los deslumbramientos y evita la fatiga visual.
+- **Tarjetas y Superficies (`#ffffff`):** Blanco puro de alto contraste.
+- **Bordes y Divisorios (`#cbd5e1`):** Gris claro definido para delimitar claramente los elementos y controles.
+
+### Texto y Legibilidad
+- **Texto Principal (`#0f172a` / `#1e293b`):** Tonalidad oscura de alto contraste para máxima legibilidad.
+- **Texto Secundario (`#334155` / `#475569`):** Gris oscuro sólido.
+
+### Colores de Estado y Acentos (Verde Profesional)
+- **Color Principal / Acento (`#16a34a` / `#15803d`):** Verde corporativo para botones principales, indicadores de éxito y bordes activos.
+- **Asistencia Completa / Entrada:** Verde esmeralda (`#16a34a`).
+- **Alerta / Salida / Turnos:** Púrpura/Violeta intenso (`#9333ea`).
+- **Ausencia / Peligro:** Rojo de alta visibilidad (`#dc2626`).
+- **Descanso / Neutro:** Gris pizarra (`#64748b`).
+
+---
+
+## 3. Componentes y Patrones UI de Escritorio
 
 ### Botones (`button`)
-- **Primario:** `bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2`
-- **Secundario:** `bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium px-4 py-2 rounded-lg transition-colors`
-- **Peligro / Destructivo:** `bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg transition-colors`
+- **Primario:** `bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-lg shadow-sm transition-colors text-base flex items-center gap-2`
+- **Secundario:** `bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold px-6 py-3 rounded-lg border border-slate-300 transition-colors text-base`
 
-### Tarjetas y Contenedores (`card`)
-- `bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6`
+### Tablas Amplias y Espaciadas (Estándar Escritorio Accesible)
+- **Contenedor:** `bg-white border-2 border-slate-300 rounded-xl shadow-md overflow-hidden`
+- **Cabecera:** `bg-slate-200 text-slate-900 font-extrabold text-sm uppercase tracking-wider px-6 py-4`
+- **Filas:** `border-b-2 border-slate-200 hover:bg-green-50 transition-colors`
+- **Celdas:** `px-6 py-5 text-base text-slate-900 font-semibold`
 
-### Tablas y Listados
-- Cabecera: `bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider px-6 py-3`
-- Filas: `border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors`
-
-### Inputs y Selectores
-- `w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`
-
----
-
-## 4. Estrategia de Migración y Plan de Acción
-
-1. **Instalación de Tailwind CSS:**
-   - Instalar `tailwindcss` y `@tailwindcss/vite` (o PostCSS si aplica).
-   - Configurar `vite.config.ts` y actualizar `src/index.css` con `@import "tailwindcss";`.
-2. **Limpieza de Estilos Globales:**
-   - Eliminar reglas CSS redundantes en `src/index.css` y `src/App.css` que entren en conflicto con Tailwind.
-3. **Refactorización de Componentes:**
-   - Reemplazar estilos en línea (`style={{ ... }}`) en todos los componentes (`AsistenciasView`, `IncidenciasView`, `TrabajadoresView`, `TurnosView`, modales, etc.) por clases utilitarias de Tailwind.
-4. **Verificación Estricta:**
-   - Ejecutar `npm run build` para validar tipados de TypeScript y ausencia de errores de compilación.
+### Modales Centrados de Alta Visibilidad
+- **Overlay:** `fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4`
+- **Contenedor:** `bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-slate-300 p-8`

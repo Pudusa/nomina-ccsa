@@ -1,6 +1,7 @@
 import type { WorkerDaySummary } from '../../types';
 import { VisualDatePicker } from '../VisualDatePicker';
-import { formatDisplayDate, formatTime } from '../../utils/dateUtils';
+import { CustomDropdown } from '../CustomDropdown';
+import { formatDisplayDate, formatTime, getTodayDateString } from '../../utils/dateUtils';
 
 interface AsistenciasViewProps {
   selectedDate: string;
@@ -21,6 +22,8 @@ interface AsistenciasViewProps {
   availableTurnos: string[];
   scheduledWorkersCount: number;
   onSort: (field: string) => void;
+  sortField: string;
+  sortDir: 'asc' | 'desc';
 }
 
 export function AsistenciasView({
@@ -42,32 +45,86 @@ export function AsistenciasView({
   availableTurnos,
   scheduledWorkersCount,
   onSort,
+  sortField,
+  sortDir,
 }: AsistenciasViewProps) {
+  const todayStr = getTodayDateString();
+  const isTodayOrFuture = selectedDate >= todayStr;
+
   return (
     <>
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <h3>Día Seleccionado</h3>
-          <p className="metric-value text-2xl font-bold text-sky-400">
+      <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Día Seleccionado</h3>
+          <p className="metric-value text-xl font-extrabold text-sky-600">
             {selectedDate ? formatDisplayDate(selectedDate) : 'Ninguno'}
           </p>
         </div>
-        <div className="metric-card">
-          <h3>Trabajadores Registrados</h3>
-          <p className="metric-value">{workerSummaries.length}</p>
+        <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Trabajadores Registrados</h3>
+          <p className="metric-value text-xl font-extrabold text-slate-900">{workerSummaries.length}</p>
         </div>
-        <div className="metric-card">
-          <h3>Programados a Trabajar</h3>
-          <p className="metric-value">{scheduledWorkersCount}</p>
+        <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Programados a Trabajar</h3>
+          <p className="metric-value text-xl font-extrabold text-emerald-600">{scheduledWorkersCount}</p>
         </div>
-        <div className="metric-card">
-          <h3>Filtrados</h3>
-          <p className="metric-value">{filteredSummaries.length}</p>
+        <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Filtrados</h3>
+          <p className="metric-value text-xl font-extrabold text-slate-900">{filteredSummaries.length}</p>
         </div>
       </div>
 
-      <div className="controls-bar flex flex-wrap items-start justify-start gap-8 mb-6">
-        <div className="filter-box w-[280px]">
+      <div className="controls-bar flex flex-wrap items-start gap-4 mb-6">
+        <div className="visual-date-picker w-[260px] mb-0">
+          <label className="vdp-label">
+            🔍 Buscar por Nombre o No.
+          </label>
+          <input
+            type="text"
+            placeholder="Buscar:"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full bg-white border-2 border-[#94a3b8] rounded-lg px-4 py-3 text-slate-900 text-sm font-semibold outline-none focus:border-green-600 placeholder:text-slate-400"
+          />
+        </div>
+
+        <div className="w-[220px]">
+          <CustomDropdown
+            label="🔄 Filtrar por Turno:"
+            value={selectedAttendanceShiftFilter}
+            onChange={(val) => {
+              setSelectedAttendanceShiftFilter(val);
+              setCurrentPage(1);
+            }}
+            options={[
+              { label: 'Todos los turnos', value: 'ALL' },
+              ...availableTurnos.map((t) => ({ label: t, value: t }))
+            ]}
+            width="w-full"
+          />
+        </div>
+
+        <div className="w-[220px]">
+          <CustomDropdown
+            label="👤 Estado de Asistencia:"
+            value={selectedAttendanceStatusFilter}
+            onChange={(val) => {
+              setSelectedAttendanceStatusFilter(val);
+              setCurrentPage(1);
+            }}
+            options={[
+              { label: 'Todos', value: 'ALL' },
+              { label: 'Presentes', value: 'PRESENT' },
+              { label: 'Ausentes', value: 'ABSENT' }
+            ]}
+            width="w-full"
+          />
+        </div>
+
+        <div className="w-[220px] ml-auto">
           <VisualDatePicker
             label="📅 Día de Asistencia:"
             value={selectedDate}
@@ -78,68 +135,19 @@ export function AsistenciasView({
             }}
           />
         </div>
-
-        <div className="filter-box flex flex-col items-start gap-1.5 w-[220px] self-center">
-          <label className="text-sm font-medium text-slate-300">
-            🔄 Filtrar por Turno:
-          </label>
-          <select
-            value={selectedAttendanceShiftFilter}
-            onChange={(e) => {
-              setSelectedAttendanceShiftFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-3 text-slate-100 text-sm outline-none focus:border-sky-400"
-          >
-            <option value="ALL">Todos los turnos</option>
-            {availableTurnos.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-box flex flex-col items-start gap-1.5 w-[200px] self-center">
-          <label className="text-sm font-medium text-slate-300">
-            👤 Estado de Asistencia:
-          </label>
-          <select
-            value={selectedAttendanceStatusFilter}
-            onChange={(e) => {
-              setSelectedAttendanceStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-3 text-slate-100 text-sm outline-none focus:border-sky-400"
-          >
-            <option value="ALL">Todos</option>
-            <option value="PRESENT">Presentes</option>
-            <option value="ABSENT">Ausentes</option>
-          </select>
-        </div>
-
-        <div className="search-box self-center">
-          <input
-            type="text"
-            placeholder="Buscar por Nombre o No. de empleado..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
       </div>
 
       <div className="table-responsive">
         <table className="nomina-table">
           <thead>
             <tr>
-              <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-sky-400">No. ↕</th>
-              <th onClick={() => onSort('nombre')} className="cursor-pointer select-none hover:text-sky-400">Nombre ↕</th>
-              <th onClick={() => onSort('turno')} className="cursor-pointer select-none hover:text-sky-400">Turno ↕</th>
-              <th onClick={() => onSort('entradaMañana')} className="cursor-pointer select-none hover:text-sky-400">Entrada (Mañana / Tarde) ↕</th>
-              <th onClick={() => onSort('salidaMañana')} className="cursor-pointer select-none hover:text-sky-400">Salida (Mañana / Tarde) ↕</th>
+              <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-sky-400">
+                No. {sortField === 'no' ? (sortDir === 'asc' ? ' ▲ (Asc)' : ' ▼ (Desc)') : ' ↕'}
+              </th>
+              <th>Nombre</th>
+              <th>Turno</th>
+              <th>Entrada</th>
+              <th>Salida</th>
             </tr>
           </thead>
           <tbody>
@@ -155,7 +163,7 @@ export function AsistenciasView({
                 );
 
                 return (
-                  <tr key={idx}>
+                  <tr key={idx} className="hover:bg-slate-50 transition">
                     <td>{worker.no || '-'}</td>
                     <td className="font-weight-bold">{worker.nombre}</td>
                     <td>
@@ -175,16 +183,22 @@ export function AsistenciasView({
                                 🟡 {formatTime(worker.entradaTarde)} <small className="text-amber-400">(Tarde)</small>
                               </span>
                             )}
-                            {!worker.entradaMañana && !worker.entradaTarde && worker.marca1 && (
-                              <span>{formatTime(worker.marca1)}</span>
+                            {!worker.entradaMañana && !worker.entradaTarde && (
+                              <span className="badge-missing">
+                                —
+                              </span>
                             )}
                           </>
                         ) : worker.isRest ? (
-                          <span className="inline-block w-fit bg-slate-700 text-slate-300 font-medium px-2 py-0.5 rounded text-xs">
+                          <span className="badge-rest-attendance">
                             💤 Descanso
                           </span>
+                        ) : isTodayOrFuture ? (
+                          <span className="badge-missing">
+                            —
+                          </span>
                         ) : (
-                          <span className="inline-block w-fit bg-rose-100 text-rose-600 font-semibold px-2 py-0.5 rounded text-xs">
+                          <span className="badge-absent">
                             ❌ Ausente
                           </span>
                         )}
@@ -204,12 +218,24 @@ export function AsistenciasView({
                                 🔴 {formatTime(worker.salidaTarde)} <small className="text-rose-400">(Tarde)</small>
                               </span>
                             )}
-                            {!worker.salidaMañana && !worker.salidaTarde && worker.marca2 && (
-                              <span className="badge-muted">{formatTime(worker.marca2)}</span>
+                            {!worker.salidaMañana && !worker.salidaTarde && (
+                              <span className="badge-missing">
+                                —
+                              </span>
                             )}
                           </>
+                        ) : worker.isRest ? (
+                          <span className="badge-rest-attendance">
+                            💤 Descanso
+                          </span>
+                        ) : isTodayOrFuture ? (
+                          <span className="badge-missing">
+                            —
+                          </span>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="badge-missing">
+                            —
+                          </span>
                         )}
                       </div>
                     </td>

@@ -68,30 +68,16 @@ export function VisualDatePicker({ label, value, onChange, minDate, availableDat
   const todayStr = getTodayDateString();
 
   return (
-    <div className="visual-date-picker" ref={containerRef}>
-      <label className="vdp-label">{label}</label>
+    <div className="visual-date-picker w-full" ref={containerRef}>
+      {label && <label className="vdp-label">{label}</label>}
       <div
-        className="vdp-header-bar cursor-pointer"
+        className="vdp-header-bar cursor-pointer select-none"
         onClick={() => setIsOpen(!isOpen)}
         title="Hacer clic para abrir/cerrar calendario"
       >
-        <span className="vdp-selected-display">📅 {formatDisplayDate(value || todayStr)}</span>
+        <span className="vdp-selected-display">{formatDisplayDate(value || todayStr)}</span>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="vdp-today-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange(todayStr);
-              const d = new Date(todayStr + 'T00:00:00');
-              setViewYear(d.getFullYear());
-              setViewMonth(d.getMonth());
-              setIsOpen(false);
-            }}
-          >
-            Hoy
-          </button>
-          <span className="text-xs text-slate-400">{isOpen ? '▲' : '▼'}</span>
+          <span className="text-xs text-slate-600 font-bold">{isOpen ? '▲' : '▼'}</span>
         </div>
       </div>
 

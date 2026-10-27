@@ -14,11 +14,20 @@ export function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
+export function getYesterdayDateString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function formatTime(isoString: string | null): string {
   if (!isoString) return '-';
   const d = new Date(isoString);
   if (isNaN(d.getTime())) return '-';
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 }
 
 export function getTurnoOnDate(defaultTurno: string, rules: ShiftRule[] | undefined, dateStr: string): string {
