@@ -24,27 +24,27 @@
     "semantic_hash": "1b73c34967d74f4cb6791f17a9c2d4a9"
   },
   "server/index.cjs": {
-    "mtime": 1791961142.992365,
-    "seen": 1791961423.07564,
-    "ast_hash": "0f898ead6f64b941afdc9a1e3a0e2b9b",
-    "semantic_hash": "0f898ead6f64b941afdc9a1e3a0e2b9b"
+    "mtime": 1793115141.3240097,
+    "seen": 1793128025.5979922,
+    "ast_hash": "e587c04d1f906b4990a24717d3d3ce63",
+    "semantic_hash": ""
   },
   "server/services/attendance.service.js": {
-    "mtime": 1791961142.992365,
-    "seen": 1791961423.07564,
+    "mtime": 1793127674.0381746,
+    "seen": 1793128025.5979922,
     "ast_hash": "1bfe8cc307a21eabee136ee983ccc4a4",
     "semantic_hash": "1bfe8cc307a21eabee136ee983ccc4a4"
   },
   "src/App.tsx": {
-    "mtime": 1793032816.2167878,
-    "seen": 1793033078.1907938,
-    "ast_hash": "feb569d3b4b5526a1c7ae8f3c01dc6b4",
+    "mtime": 1793118017.098064,
+    "seen": 1793128025.5979922,
+    "ast_hash": "212fdc79143480f15631b7dd86cbde3a",
     "semantic_hash": ""
   },
   "src/components/VisualDatePicker.tsx": {
-    "mtime": 1791970846.4011848,
-    "seen": 1791974677.9033465,
-    "ast_hash": "a4476c72d56a4a9bcd4c49fe24b4083c",
+    "mtime": 1793118981.5805457,
+    "seen": 1793128025.5979922,
+    "ast_hash": "5edbbf98e9b48170c88e1626a2c8fdf8",
     "semantic_hash": ""
   },
   "src/components/modals/CreateShiftModal.tsx": {
@@ -54,10 +54,10 @@
     "semantic_hash": "c41d7b4275181dd1fbbade5bf8145d1e"
   },
   "src/components/modals/EditDayModal.tsx": {
-    "mtime": 1791961143.0015776,
-    "seen": 1791961423.07564,
-    "ast_hash": "d5c824794da9e63d391157ee400f5d2e",
-    "semantic_hash": "d5c824794da9e63d391157ee400f5d2e"
+    "mtime": 1793047507.695896,
+    "seen": 1793128025.5979922,
+    "ast_hash": "3ddd1c4deb7f8a9ac784daf965109e39",
+    "semantic_hash": ""
   },
   "src/components/modals/EditWorkerModal.tsx": {
     "mtime": 1791961143.0015776,
@@ -66,21 +66,21 @@
     "semantic_hash": "ad9e021d0f43236f0681d0deaa3f3d21"
   },
   "src/components/views/AsistenciasView.tsx": {
-    "mtime": 1791974414.6870353,
-    "seen": 1791974677.9033465,
-    "ast_hash": "a32bb400240349f4bea44c68660a2e7f",
+    "mtime": 1793127967.7808745,
+    "seen": 1793128025.5979922,
+    "ast_hash": "b8269a5d1c619d8909d66506c58e6874",
     "semantic_hash": ""
   },
   "src/components/views/TrabajadoresView.tsx": {
-    "mtime": 1793032884.5791042,
-    "seen": 1793033078.1907938,
-    "ast_hash": "9dc33a1eda7ca2098cd618bb23374355",
+    "mtime": 1793040072.8760705,
+    "seen": 1793128025.5979922,
+    "ast_hash": "4825b13e2a7ffcc8eaeed0ffd6cac79f",
     "semantic_hash": ""
   },
   "src/components/views/TurnosView.tsx": {
-    "mtime": 1791971084.6330495,
-    "seen": 1791974677.9033465,
-    "ast_hash": "448fa1592f6969b10d49eba144ab50e9",
+    "mtime": 1793105355.153379,
+    "seen": 1793128025.5979922,
+    "ast_hash": "b89871c1261dc234644adc2f5611d268",
     "semantic_hash": ""
   },
   "src/constants/index.ts": {
@@ -96,16 +96,16 @@
     "semantic_hash": "df3369963799e47ef5a77cdca932abf0"
   },
   "src/types/index.ts": {
-    "mtime": 1791964632.6099946,
-    "seen": 1791965980.1100507,
-    "ast_hash": "2b9545b6c54068cf4e85af02d1e64943",
+    "mtime": 1793047449.551123,
+    "seen": 1793128025.5979922,
+    "ast_hash": "f8ab31ac23b2b2c65739557caa785616",
     "semantic_hash": ""
   },
   "src/utils/dateUtils.ts": {
-    "mtime": 1791961143.0083086,
-    "seen": 1791961423.07564,
-    "ast_hash": "6655637b85207287253ffac7a2a886ca",
-    "semantic_hash": "6655637b85207287253ffac7a2a886ca"
+    "mtime": 1793044012.0722673,
+    "seen": 1793128025.5979922,
+    "ast_hash": "3238a50ef033a2fc871e3e41c7eb5beb",
+    "semantic_hash": ""
   },
   "tsconfig.app.json": {
     "mtime": 1791961143.0083086,
@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "GEMINI.md": {
-    "mtime": 1791968007.157247,
-    "seen": 1791974677.9033465,
-    "ast_hash": "de7d44f6fd9e9dfaf46fbabf163be1e8",
+    "mtime": 1793037064.7956781,
+    "seen": 1793128025.5979922,
+    "ast_hash": "a3184cb7cfb1548da943fcb93d363f4c",
     "semantic_hash": ""
   },
   "README.md": {
@@ -180,9 +180,9 @@
     "semantic_hash": ""
   },
   "src/components/views/IncidenciasView.tsx": {
-    "mtime": 1792782649.5900419,
-    "seen": 1792782674.636465,
-    "ast_hash": "a34da05e9b4cbf7f8c89fad247fd5b2c",
+    "mtime": 1793112719.4385383,
+    "seen": 1793128025.5979922,
+    "ast_hash": "c8a439361b75cd9dd657a7406a91ef83",
     "semantic_hash": ""
   },
   ".gemini/skills/git-workflow/SKILL.md": {
@@ -204,14 +204,14 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1791970668.101946,
-    "seen": 1791974677.9033465,
-    "ast_hash": "2c713429185f1b4c769a49a27acfaa32",
+    "mtime": 1793037763.586531,
+    "seen": 1793128025.5979922,
+    "ast_hash": "3c38396a924bf0ff4492e540e8770971",
     "semantic_hash": ""
   },
   "cap/Vista Incidencias.png": {
-    "mtime": 1791967197.885407,
-    "seen": 1791974677.9033465,
+    "mtime": 1793127674.0198143,
+    "seen": 1793128025.5979922,
     "ast_hash": "fb1dd73a44b73dfacaf9477c23176aae",
     "semantic_hash": ""
   },
@@ -219,6 +219,48 @@
     "mtime": 1793033328.824653,
     "seen": 1793033401.7422159,
     "ast_hash": "ec3f12bb75062624e0e3ae0b7c860570",
+    "semantic_hash": ""
+  },
+  "server/check_db.cjs": {
+    "mtime": 1793109157.3156922,
+    "seen": 1793128025.5979922,
+    "ast_hash": "ae2a0005eabe1ba8fa1cf08946abb262",
+    "semantic_hash": ""
+  },
+  "server/check_db.js": {
+    "mtime": 1793108990.4052205,
+    "seen": 1793128025.5979922,
+    "ast_hash": "40380c88e4f41c4b0561e161e488a220",
+    "semantic_hash": ""
+  },
+  "server/services/attendance.service.cjs": {
+    "mtime": 1793115078.3794937,
+    "seen": 1793128025.5979922,
+    "ast_hash": "f2cf6fca1e8114157cb5e33a2e273994",
+    "semantic_hash": ""
+  },
+  "src/components/CustomDropdown.tsx": {
+    "mtime": 1793041430.3477838,
+    "seen": 1793128025.5979922,
+    "ast_hash": "23190da4edd82f19f65faa9172d5f9fb",
+    "semantic_hash": ""
+  },
+  "cap/1 referencia.png": {
+    "mtime": 1793107297.2830257,
+    "seen": 1793128025.5979922,
+    "ast_hash": "b90caef57edab30ca07e4c15d94d71c0",
+    "semantic_hash": ""
+  },
+  "cap/2 real.png": {
+    "mtime": 1793119271.8797877,
+    "seen": 1793128025.5979922,
+    "ast_hash": "353e5fb59437ae88210344a5ecdc9803",
+    "semantic_hash": ""
+  },
+  "cap/3.png": {
+    "mtime": 1793120354.5289557,
+    "seen": 1793128025.5979922,
+    "ast_hash": "78235475541fd228639e1ccb1cdeb982",
     "semantic_hash": ""
   }
 }

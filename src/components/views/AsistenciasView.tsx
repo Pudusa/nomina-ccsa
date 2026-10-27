@@ -138,7 +138,7 @@ export function AsistenciasView({
       </div>
 
       <div className="table-responsive">
-        <table className="nomina-table">
+        <table className="nomina-table asistencias-table">
           <thead>
             <tr>
               <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-sky-400">
