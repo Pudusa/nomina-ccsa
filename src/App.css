@@ -478,6 +478,19 @@ body {
   font-size: 1.05rem;
 }
 
+.asistencias-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.asistencias-table th,
+.asistencias-table td {
+  width: 20%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
 .clickable-table tbody tr {
   cursor: pointer;
   transition: background 0.15s ease;

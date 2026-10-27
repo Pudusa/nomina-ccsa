@@ -4,12 +4,15 @@
   "3": "index.cjs",
   "5": "dependencies",
   "6": "devDependencies",
+  "7": "database.cjs",
   "9": "settings.json",
+  "10": "attendance.service.js",
   "11": "React + TypeScript + Vite",
   "13": "Contexto Global: Sistema de Nómina y Asistencia (nomina-ccsa)",
-  "14": "3. Componentes y Patrones UI",
+  "14": "2. Paleta de Colores (Gris Suave & Verde Profesional de Alto Contraste)",
   "15": "git-workflow/SKILL.md",
   "16": "web-backend/SKILL.md",
-  "17": "IncidenciasView.tsx",
-  "18": "scripts"
+  "17": "Directrices de Frontend & UX/UI (nomina-ccsa)",
+  "18": "scripts",
+  "19": "check_db.js"
 }

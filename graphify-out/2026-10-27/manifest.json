@@ -1,0 +1,224 @@
+{
+  ".gemini/settings.json": {
+    "mtime": 1791968015.8185964,
+    "seen": 1791974677.9033465,
+    "ast_hash": "459e9c99ce5c4c88b15e20ae48315bf2",
+    "semantic_hash": ""
+  },
+  ".oxlintrc.json": {
+    "mtime": 1791961142.976386,
+    "seen": 1791961423.07564,
+    "ast_hash": "1f0703525c59e961c2b7f20e78aa1cd4",
+    "semantic_hash": "1f0703525c59e961c2b7f20e78aa1cd4"
+  },
+  "package.json": {
+    "mtime": 1793031331.8294764,
+    "seen": 1793031425.9559133,
+    "ast_hash": "cf03eb26905c592e72a06149fa39c5e4",
+    "semantic_hash": ""
+  },
+  "server/database.cjs": {
+    "mtime": 1791961142.992365,
+    "seen": 1791961423.07564,
+    "ast_hash": "1b73c34967d74f4cb6791f17a9c2d4a9",
+    "semantic_hash": "1b73c34967d74f4cb6791f17a9c2d4a9"
+  },
+  "server/index.cjs": {
+    "mtime": 1791961142.992365,
+    "seen": 1791961423.07564,
+    "ast_hash": "0f898ead6f64b941afdc9a1e3a0e2b9b",
+    "semantic_hash": "0f898ead6f64b941afdc9a1e3a0e2b9b"
+  },
+  "server/services/attendance.service.js": {
+    "mtime": 1791961142.992365,
+    "seen": 1791961423.07564,
+    "ast_hash": "1bfe8cc307a21eabee136ee983ccc4a4",
+    "semantic_hash": "1bfe8cc307a21eabee136ee983ccc4a4"
+  },
+  "src/App.tsx": {
+    "mtime": 1793032816.2167878,
+    "seen": 1793033078.1907938,
+    "ast_hash": "feb569d3b4b5526a1c7ae8f3c01dc6b4",
+    "semantic_hash": ""
+  },
+  "src/components/VisualDatePicker.tsx": {
+    "mtime": 1791970846.4011848,
+    "seen": 1791974677.9033465,
+    "ast_hash": "a4476c72d56a4a9bcd4c49fe24b4083c",
+    "semantic_hash": ""
+  },
+  "src/components/modals/CreateShiftModal.tsx": {
+    "mtime": 1791961143.0015776,
+    "seen": 1791961423.07564,
+    "ast_hash": "c41d7b4275181dd1fbbade5bf8145d1e",
+    "semantic_hash": "c41d7b4275181dd1fbbade5bf8145d1e"
+  },
+  "src/components/modals/EditDayModal.tsx": {
+    "mtime": 1791961143.0015776,
+    "seen": 1791961423.07564,
+    "ast_hash": "d5c824794da9e63d391157ee400f5d2e",
+    "semantic_hash": "d5c824794da9e63d391157ee400f5d2e"
+  },
+  "src/components/modals/EditWorkerModal.tsx": {
+    "mtime": 1791961143.0015776,
+    "seen": 1791961423.07564,
+    "ast_hash": "ad9e021d0f43236f0681d0deaa3f3d21",
+    "semantic_hash": "ad9e021d0f43236f0681d0deaa3f3d21"
+  },
+  "src/components/views/AsistenciasView.tsx": {
+    "mtime": 1791974414.6870353,
+    "seen": 1791974677.9033465,
+    "ast_hash": "a32bb400240349f4bea44c68660a2e7f",
+    "semantic_hash": ""
+  },
+  "src/components/views/TrabajadoresView.tsx": {
+    "mtime": 1793032884.5791042,
+    "seen": 1793033078.1907938,
+    "ast_hash": "9dc33a1eda7ca2098cd618bb23374355",
+    "semantic_hash": ""
+  },
+  "src/components/views/TurnosView.tsx": {
+    "mtime": 1791971084.6330495,
+    "seen": 1791974677.9033465,
+    "ast_hash": "448fa1592f6969b10d49eba144ab50e9",
+    "semantic_hash": ""
+  },
+  "src/constants/index.ts": {
+    "mtime": 1791961143.0083086,
+    "seen": 1791961423.07564,
+    "ast_hash": "67d8fbd99cb6b6bd2fdb723d937ace32",
+    "semantic_hash": "67d8fbd99cb6b6bd2fdb723d937ace32"
+  },
+  "src/main.tsx": {
+    "mtime": 1791961143.0083086,
+    "seen": 1791961423.07564,
+    "ast_hash": "df3369963799e47ef5a77cdca932abf0",
+    "semantic_hash": "df3369963799e47ef5a77cdca932abf0"
+  },
+  "src/types/index.ts": {
+    "mtime": 1791964632.6099946,
+    "seen": 1791965980.1100507,
+    "ast_hash": "2b9545b6c54068cf4e85af02d1e64943",
+    "semantic_hash": ""
+  },
+  "src/utils/dateUtils.ts": {
+    "mtime": 1791961143.0083086,
+    "seen": 1791961423.07564,
+    "ast_hash": "6655637b85207287253ffac7a2a886ca",
+    "semantic_hash": "6655637b85207287253ffac7a2a886ca"
+  },
+  "tsconfig.app.json": {
+    "mtime": 1791961143.0083086,
+    "seen": 1791961423.07564,
+    "ast_hash": "e4f83bdfdf660f5e5364945e14291d70",
+    "semantic_hash": "e4f83bdfdf660f5e5364945e14291d70"
+  },
+  "tsconfig.json": {
+    "mtime": 1791961143.0083086,
+    "seen": 1791961423.07564,
+    "ast_hash": "852c3a5df14a4b43ac28e9554ebedf4a",
+    "semantic_hash": "852c3a5df14a4b43ac28e9554ebedf4a"
+  },
+  "tsconfig.node.json": {
+    "mtime": 1791961143.0083086,
+    "seen": 1791961423.07564,
+    "ast_hash": "74cde0261ad0a13045ca0a05ab1542ae",
+    "semantic_hash": "74cde0261ad0a13045ca0a05ab1542ae"
+  },
+  "vite.config.ts": {
+    "mtime": 1791970773.8702374,
+    "seen": 1791974677.9033465,
+    "ast_hash": "51fcb72edd32af419a69c5679126e4a7",
+    "semantic_hash": ""
+  },
+  "GEMINI.md": {
+    "mtime": 1791968007.157247,
+    "seen": 1791974677.9033465,
+    "ast_hash": "de7d44f6fd9e9dfaf46fbabf163be1e8",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1791961142.988451,
+    "seen": 1791961801.8161051,
+    "ast_hash": "3a8e2f41658852c43fdce93a22bc2f90",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1791961142.988451,
+    "seen": 1791961801.8161051,
+    "ast_hash": "b93f51c190e3361108e5996a7a74ab91",
+    "semantic_hash": ""
+  },
+  "public/favicon.svg": {
+    "mtime": 1791961142.992365,
+    "seen": 1791961801.8161051,
+    "ast_hash": "7e840862161341271697daa99a40d76b",
+    "semantic_hash": ""
+  },
+  "public/icons.svg": {
+    "mtime": 1791961142.992365,
+    "seen": 1791961801.8161051,
+    "ast_hash": "21c7473c592c67dc87223d49892c8f0a",
+    "semantic_hash": ""
+  },
+  "src/assets/hero.png": {
+    "mtime": 1791961143.0015776,
+    "seen": 1791961801.8161051,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": ""
+  },
+  "src/assets/react.svg": {
+    "mtime": 1791961143.0015776,
+    "seen": 1791961801.8161051,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": ""
+  },
+  "src/assets/vite.svg": {
+    "mtime": 1791961143.0015776,
+    "seen": 1791961801.8161051,
+    "ast_hash": "6d5180a782d64c8cf51ba01c2a2184d8",
+    "semantic_hash": ""
+  },
+  "src/components/views/IncidenciasView.tsx": {
+    "mtime": 1792782649.5900419,
+    "seen": 1792782674.636465,
+    "ast_hash": "a34da05e9b4cbf7f8c89fad247fd5b2c",
+    "semantic_hash": ""
+  },
+  ".gemini/skills/git-workflow/SKILL.md": {
+    "mtime": 1791968013.2302394,
+    "seen": 1791974677.9033465,
+    "ast_hash": "7ec7164bb8450e5ad0369746c3f3eca0",
+    "semantic_hash": ""
+  },
+  ".gemini/skills/web-backend/SKILL.md": {
+    "mtime": 1791968010.5046964,
+    "seen": 1791974677.9033465,
+    "ast_hash": "a7747a109d980f20436807487fe1ac5d",
+    "semantic_hash": ""
+  },
+  ".gemini/skills/web-frontend/SKILL.md": {
+    "mtime": 1791968009.0149305,
+    "seen": 1791974677.9033465,
+    "ast_hash": "9152244da0fc12d01542045a5887a5cf",
+    "semantic_hash": ""
+  },
+  "DESIGN_SYSTEM.md": {
+    "mtime": 1791970668.101946,
+    "seen": 1791974677.9033465,
+    "ast_hash": "2c713429185f1b4c769a49a27acfaa32",
+    "semantic_hash": ""
+  },
+  "cap/Vista Incidencias.png": {
+    "mtime": 1791967197.885407,
+    "seen": 1791974677.9033465,
+    "ast_hash": "fb1dd73a44b73dfacaf9477c23176aae",
+    "semantic_hash": ""
+  },
+  "src/components/modals/WorkerCalendarModal.tsx": {
+    "mtime": 1793033328.824653,
+    "seen": 1793033401.7422159,
+    "ast_hash": "ec3f12bb75062624e0e3ae0b7c860570",
+    "semantic_hash": ""
+  }
+}
