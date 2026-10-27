@@ -169,18 +169,18 @@ export function AsistenciasView({
                     <td>
                       <span className="badge-turno">{worker.turno}</span>
                     </td>
-                    <td>
-                      <div className="flex flex-col gap-1">
-                        {hasMark ? (
-                          <>
+                    {hasMark ? (
+                      <>
+                        <td>
+                          <div className="flex flex-col justify-center min-h-[50px] gap-1">
                             {worker.entradaMañana && (
                               <span className="badge-dept" title="Entrada por la Mañana">
-                                🟢 {formatTime(worker.entradaMañana)} <small className="text-sky-400">(Mañana)</small>
+                                ☀️ {formatTime(worker.entradaMañana)}
                               </span>
                             )}
                             {worker.entradaTarde && (
                               <span className="badge-dept" title="Entrada por la Tarde">
-                                🟡 {formatTime(worker.entradaTarde)} <small className="text-amber-400">(Tarde)</small>
+                                🌙 {formatTime(worker.entradaTarde)}
                               </span>
                             )}
                             {!worker.entradaMañana && !worker.entradaTarde && (
@@ -188,34 +188,18 @@ export function AsistenciasView({
                                 —
                               </span>
                             )}
-                          </>
-                        ) : worker.isRest ? (
-                          <span className="badge-rest-attendance">
-                            💤 Descanso
-                          </span>
-                        ) : isTodayOrFuture ? (
-                          <span className="badge-missing">
-                            —
-                          </span>
-                        ) : (
-                          <span className="badge-absent">
-                            ❌ Ausente
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex flex-col gap-1">
-                        {hasMark ? (
-                          <>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col justify-center min-h-[50px] gap-1">
                             {worker.salidaMañana && (
                               <span className="badge-verif" title="Salida por la Mañana">
-                                🌙 {formatTime(worker.salidaMañana)} <small className="text-sky-400">(Mañana)</small>
+                                ☀️ {formatTime(worker.salidaMañana)}
                               </span>
                             )}
                             {worker.salidaTarde && (
                               <span className="badge-verif" title="Salida por la Tarde">
-                                🔴 {formatTime(worker.salidaTarde)} <small className="text-rose-400">(Tarde)</small>
+                                🌙 {formatTime(worker.salidaTarde)}
                               </span>
                             )}
                             {!worker.salidaMañana && !worker.salidaTarde && (
@@ -223,22 +207,28 @@ export function AsistenciasView({
                                 —
                               </span>
                             )}
-                          </>
-                        ) : worker.isRest ? (
-                          <span className="badge-rest-attendance">
-                            💤 Descanso
-                          </span>
-                        ) : isTodayOrFuture ? (
-                          <span className="badge-missing">
-                            —
-                          </span>
-                        ) : (
-                          <span className="badge-missing">
-                            —
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                          </div>
+                        </td>
+                      </>
+                    ) : worker.isRest ? (
+                      <td colSpan={2} className="text-center py-4">
+                        <span className="badge-rest-attendance">
+                          🛏️ Descanso
+                        </span>
+                      </td>
+                    ) : isTodayOrFuture ? (
+                      <td colSpan={2} className="text-center py-4">
+                        <span className="badge-missing">
+                          —
+                        </span>
+                      </td>
+                    ) : (
+                      <td colSpan={2} className="text-center py-4">
+                        <span className="badge-absent">
+                          ❌ Ausente
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 );
               })
