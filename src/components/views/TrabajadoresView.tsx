@@ -19,6 +19,8 @@ interface TrabajadoresViewProps {
   workerTotalPages: number;
   onEditWorker: (worker: UniqueWorker, currentTurno: string) => void;
   onSort: (field: string) => void;
+  sortField: string;
+  sortDir: 'asc' | 'desc';
   workerMonthYear: string;
   setWorkerMonthYear: (m: string) => void;
   shiftTemplates: Record<string, DayConfig[]>;
@@ -39,6 +41,8 @@ export function TrabajadoresView({
   workerTotalPages,
   onEditWorker,
   onSort,
+  sortField,
+  sortDir,
   workerMonthYear,
   setWorkerMonthYear,
   shiftTemplates,
@@ -206,9 +210,13 @@ export function TrabajadoresView({
         <table className="nomina-table">
           <thead>
             <tr>
-              <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-sky-400">No. ↕</th>
-              <th onClick={() => onSort('nombre')} className="cursor-pointer select-none hover:text-sky-400">Nombre del Trabajador ↕</th>
-              <th onClick={() => onSort('defaultTurno')} className="cursor-pointer select-none hover:text-sky-400">Turno Base ↕</th>
+              <th onClick={() => onSort('no')} className="cursor-pointer select-none hover:text-green-700">
+                No. {sortField === 'no' ? (sortDir === 'asc' ? ' ▲ (Asc)' : ' ▼ (Desc)') : ' ↕'}
+              </th>
+              <th>
+                Nombre del Trabajador
+              </th>
+              <th>Turno Base</th>
               <th className="text-center">Días 1 Marca</th>
               <th className="text-center">Días Ausentes</th>
               <th className="text-center">Acciones</th>

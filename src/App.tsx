@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import './App.css';
-import type { WorkerDaySummary, UniqueWorker, DayConfig, IncidentItem } from './types';
-import { getTodayDateString, getTurnoOnDate, WEEKDAY_NAMES } from './utils/dateUtils';
+import type { WorkerDaySummary, UniqueWorker, DayConfig } from './types';
+import { getTodayDateString, getYesterdayDateString, getTurnoOnDate, WEEKDAY_NAMES } from './utils/dateUtils';
 import { API_BASE } from './constants';
 import { AsistenciasView } from './components/views/AsistenciasView';
 import { TrabajadoresView } from './components/views/TrabajadoresView';
@@ -57,6 +57,7 @@ export default function App() {
   const [editingDay, setEditingDay] = useState<{ dayIndex: number; dayNum: number; config: DayConfig } | null>(null);
   const [modalDayHours, setModalDayHours] = useState<string>('');
   const [modalMarkDirection, setModalMarkDirection] = useState<'entrada' | 'salida'>('entrada');
+  const [modalNumMarcas, setModalNumMarcas] = useState<number>(2);
 
   const [editingWorker, setEditingWorker] = useState<UniqueWorker | null>(null);
   const [newTurnoValue, setNewTurnoValue] = useState<string>('Matutino');
@@ -66,146 +67,7 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState<'asistencias' | 'trabajadores' | 'turnos' | 'incidencias'>('asistencias');
 
-  // Estados para la vista de Incidencias
-  const [incidentMonthYear, setIncidentMonthYear] = useState<string>(() => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
-  });
-  const [incidentPeriod, setIncidentPeriod] = useState<'full' | 'q1' | 'q2'>('full');
-  const [incidentTypeFilter, setIncidentTypeFilter] = useState<string>('ALL');
-  const [incidentSearchTerm, setIncidentSearchTerm] = useState<string>('');
-  const [incidentShiftFilter, setIncidentShiftFilter] = useState<string>('ALL');
-  const [incidentCurrentPage, setIncidentCurrentPage] = useState<number>(1);
-  const [incidentsList, setIncidentsList] = useState<IncidentItem[]>([]);
-  const pageSize = 15;
 
-  // Efecto para calcular incidencias (ausencias) según el mes y periodo (mes completo o quincena)
-  useEffect(() => {
-    if (!isDataLoaded || !incidentMonthYear || currentView !== 'incidencias') return;
-
-    const fetchIncidentsForRange = async () => {
-      const [yearStr, monthStr] = incidentMonthYear.split('-');
-      const year = parseInt(yearStr, 10);
-      const month = parseInt(monthStr, 10);
-      const daysInMonth = new Date(year, month, 0).getDate();
-
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yYyyy = yesterday.getFullYear();
-      const yMm = String(yesterday.getMonth() + 1).padStart(2, '0');
-      const yDd = String(yesterday.getDate()).padStart(2, '0');
-      const yesterdayStr = `${yYyyy}-${yMm}-${yDd}`;
-
-      let startDay = 1;
-      let endDay = daysInMonth;
-
-      if (incidentPeriod === 'q1') {
-        startDay = 1;
-        endDay = 15;
-      } else if (incidentPeriod === 'q2') {
-        startDay = 16;
-        endDay = daysInMonth;
-      }
-
-      const dateStrs: string[] = [];
-      for (let d = startDay; d <= endDay; d++) {
-        const dStr = String(d).padStart(2, '0');
-        const candidateDate = `${incidentMonthYear}-${dStr}`;
-        if (candidateDate <= yesterdayStr) {
-          dateStrs.push(candidateDate);
-        }
-      }
-
-      let currentShiftTemplates = shiftTemplates;
-      try {
-        const res = await fetch(`${API_BASE}/api/shift-templates?year_month=${incidentMonthYear}`);
-        const data = await res.json();
-        currentShiftTemplates = data;
-      } catch (e) {}
-
-      const allIncidents: IncidentItem[] = [];
-
-      const promises = dateStrs.map(async (dateStr) => {
-        try {
-          const res = await fetch(`${API_BASE}/api/attendance?date=${dateStr}`);
-          const summaries: WorkerDaySummary[] = await res.json();
-          
-          const dateObj = new Date(dateStr + 'T00:00:00');
-          const dayNum = dateObj.getDate();
-          const dayIndex = (dayNum - 1) % 31;
-
-          summaries.forEach((w) => {
-            const hasMark = Boolean(
-              w.marca1 ||
-              w.marca2 ||
-              w.entradaMañana ||
-              w.salidaMañana ||
-              w.entradaTarde ||
-              w.salidaTarde
-            );
-
-            // Verificar si es día de descanso (P)
-            let isRestDay = false;
-            const template = currentShiftTemplates[w.turno];
-            if (template && Array.isArray(template) && template[dayIndex]) {
-              const hours = template[dayIndex].hours;
-              if (String(hours).toLowerCase() === 'p') {
-                isRestDay = true;
-              }
-            }
-
-            // Si no tiene marca y no es día de descanso, es una ausencia
-            if (!hasMark && !isRestDay) {
-              allIncidents.push({
-                id: `${dateStr}-${w.no}`,
-                date: dateStr,
-                workerNo: w.no,
-                workerName: w.nombre || 'Desconocido',
-                turno: w.turno || 'Sin turno',
-                type: 'Ausente',
-                description: 'Sin registros de asistencia en jornada laboral',
-              });
-            }
-          });
-        } catch (err) {
-          console.error(`Error al obtener asistencia para ${dateStr}:`, err);
-        }
-      });
-
-      await Promise.all(promises);
-
-      // Ordenar por fecha descendente y número de empleado
-      allIncidents.sort((a, b) => {
-        if (a.date !== b.date) return b.date.localeCompare(a.date);
-        return Number(a.workerNo) - Number(b.workerNo) || a.workerNo.localeCompare(b.workerNo);
-      });
-
-      setIncidentsList(allIncidents);
-    };
-
-    fetchIncidentsForRange();
-  }, [incidentMonthYear, incidentPeriod, isDataLoaded, currentView, shiftTemplates]);
-
-  const filteredIncidents = useMemo(() => {
-    return incidentsList.filter((inc) => {
-      if (incidentTypeFilter === 'ABSENT' && inc.type !== 'Ausente') return false;
-      if (incidentShiftFilter !== 'ALL' && inc.turno !== incidentShiftFilter) return false;
-      if (incidentSearchTerm.trim()) {
-        const term = incidentSearchTerm.toLowerCase();
-        const matchName = inc.workerName.toLowerCase().includes(term);
-        const matchNo = inc.workerNo.toLowerCase().includes(term);
-        if (!matchName && !matchNo) return false;
-      }
-      return true;
-    });
-  }, [incidentsList, incidentTypeFilter, incidentShiftFilter, incidentSearchTerm]);
-
-  const absentIncidentsCount = useMemo(() => {
-    return incidentsList.filter(i => i.type === 'Ausente').length;
-  }, [incidentsList]);
 
   const fetchShiftTemplates = async (ym?: string) => {
     try {
@@ -235,7 +97,17 @@ export default function App() {
 
       if (dates.length > 0) {
         setAvailableDates(dates);
-        const targetDate = dateToSelect || selectedDate || dates[0];
+        let defaultDate = dates[dates.length - 1];
+        const yesterday = getYesterdayDateString();
+        if (dates.includes(yesterday)) {
+          defaultDate = yesterday;
+        } else {
+          const validDates = dates.filter(d => d <= yesterday);
+          if (validDates.length > 0) {
+            defaultDate = validDates[validDates.length - 1];
+          }
+        }
+        const targetDate = dateToSelect || selectedDate || defaultDate;
         setSelectedDate(targetDate);
         const ym = targetDate.substring(0, 7);
         setSelectedMonthYear(ym);
@@ -390,10 +262,34 @@ export default function App() {
     });
   }, [uniqueWorkers, workerSearchTerm, selectedTurno, selectedDate]);
 
-  // Estados y lógica de ordenamiento por columnas (por defecto ascendente al hacer clic)
+  // Estados y lógica de ordenamiento por columnas (exclusivo para No. y Nombre)
   const [attendanceSortField, setAttendanceSortField] = useState<string>('no');
+  const [attendanceSortDir, setAttendanceSortDir] = useState<'asc' | 'desc'>('asc');
+
   const [workerSortField, setWorkerSortField] = useState<string>('no');
-  const [incidentSortField, setIncidentSortField] = useState<string>('date');
+  const [workerSortDir, setWorkerSortDir] = useState<'asc' | 'desc'>('asc');
+
+
+
+  const handleAttendanceSort = (field: string) => {
+    if (attendanceSortField === field) {
+      setAttendanceSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setAttendanceSortField(field);
+      setAttendanceSortDir('asc');
+    }
+  };
+
+  const handleWorkerSort = (field: string) => {
+    if (workerSortField === field) {
+      setWorkerSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setWorkerSortField(field);
+      setWorkerSortDir('asc');
+    }
+  };
+
+  const pageSize = 15;
 
   const sortedSummaries = useMemo(() => {
     const list = [...filteredSummaries];
@@ -409,12 +305,13 @@ export default function App() {
         valB = valB.toLowerCase();
       }
 
-      if (valA < valB) return -1;
-      if (valA > valB) return 1;
+      const modifier = attendanceSortDir === 'asc' ? 1 : -1;
+      if (valA < valB) return -1 * modifier;
+      if (valA > valB) return 1 * modifier;
       return 0;
     });
     return list;
-  }, [filteredSummaries, attendanceSortField]);
+  }, [filteredSummaries, attendanceSortField, attendanceSortDir]);
 
   const sortedWorkers = useMemo(() => {
     const list = [...filteredWorkers];
@@ -422,13 +319,7 @@ export default function App() {
       let valA: any;
       let valB: any;
 
-      if (workerSortField === 'defaultTurno') {
-        valA = selectedDate ? getTurnoOnDate(a.defaultTurno, a.rules, selectedDate) : a.defaultTurno;
-        valB = selectedDate ? getTurnoOnDate(b.defaultTurno, b.rules, selectedDate) : b.defaultTurno;
-      } else if (workerSortField === 'rules') {
-        valA = a.rules.length;
-        valB = b.rules.length;
-      } else if (workerSortField === 'no') {
+      if (workerSortField === 'no') {
         valA = Number(a.no) || 0;
         valB = Number(b.no) || 0;
       } else {
@@ -439,33 +330,13 @@ export default function App() {
       if (typeof valA === 'string') valA = valA.toLowerCase();
       if (typeof valB === 'string') valB = valB.toLowerCase();
 
-      if (valA < valB) return -1;
-      if (valA > valB) return 1;
+      const modifier = workerSortDir === 'asc' ? 1 : -1;
+      if (valA < valB) return -1 * modifier;
+      if (valA > valB) return 1 * modifier;
       return 0;
     });
     return list;
-  }, [filteredWorkers, workerSortField, selectedDate]);
-
-  const sortedIncidents = useMemo(() => {
-    const list = [...filteredIncidents];
-    list.sort((a, b) => {
-      let valA: any = a[incidentSortField as keyof IncidentItem] ?? '';
-      let valB: any = b[incidentSortField as keyof IncidentItem] ?? '';
-
-      if (incidentSortField === 'workerNo') {
-        valA = Number(valA) || 0;
-        valB = Number(valB) || 0;
-      } else if (typeof valA === 'string') {
-        valA = valA.toLowerCase();
-        valB = valB.toLowerCase();
-      }
-
-      if (valA < valB) return -1;
-      if (valA > valB) return 1;
-      return 0;
-    });
-    return list;
-  }, [filteredIncidents, incidentSortField]);
+  }, [filteredWorkers, workerSortField, workerSortDir, selectedDate]);
 
   const totalPages = Math.ceil(sortedSummaries.length / pageSize) || 1;
   const paginatedSummaries = useMemo(() => {
@@ -478,12 +349,6 @@ export default function App() {
     const start = (workerCurrentPage - 1) * pageSize;
     return sortedWorkers.slice(start, start + pageSize);
   }, [sortedWorkers, workerCurrentPage, pageSize]);
-
-  const incidentTotalPages = Math.ceil(sortedIncidents.length / pageSize) || 1;
-  const paginatedIncidents = useMemo(() => {
-    const start = (incidentCurrentPage - 1) * pageSize;
-    return sortedIncidents.slice(start, start + pageSize);
-  }, [sortedIncidents, incidentCurrentPage, pageSize]);
 
   const handleSaveTurnoRule = async () => {
     if (!editingWorker || !ruleStartDate) return;
@@ -531,10 +396,11 @@ export default function App() {
     if (!editingDay) return;
     const parsedHours = modalDayHours === 'P' || modalDayHours === 'p' ? 'P' : parseFloat(modalDayHours) || 0;
 
-    const currentDays = [...(shiftTemplates[selectedShiftTemplate] || Array.from({ length: 31 }, () => ({ hours: 'P', markDirection: 'entrada' as const })))];
+    const currentDays = [...(shiftTemplates[selectedShiftTemplate] || Array.from({ length: 31 }, () => ({ hours: 'P', markDirection: 'entrada' as const, numMarcas: 2 })))];
     currentDays[editingDay.dayIndex] = {
       hours: parsedHours,
       markDirection: modalMarkDirection,
+      numMarcas: modalNumMarcas,
     };
 
     try {
@@ -569,6 +435,7 @@ export default function App() {
             dayIndex: d.dayIndex,
             hours: d.hours,
             markDirection: d.markDirection,
+            numMarcas: d.numMarcas,
           })),
           yearMonth: selectedMonthYear,
         }),
@@ -590,6 +457,7 @@ export default function App() {
     const defaultDays: DayConfig[] = Array.from({ length: 31 }, () => ({
       hours: 'P',
       markDirection: 'entrada',
+      numMarcas: 2,
     }));
 
     try {
@@ -645,7 +513,7 @@ export default function App() {
     const days = [];
     for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
       const dayIndex = dayNum - 1;
-      const dayConfig = template[dayIndex] || { hours: 'P', markDirection: 'entrada' };
+      const dayConfig = template[dayIndex] || { hours: 'P', markDirection: 'entrada', numMarcas: 2 };
       const hoursVal = dayConfig.hours;
       const numericVal = typeof hoursVal === 'number' ? hoursVal : parseFloat(hoursVal) || 0;
 
@@ -663,6 +531,7 @@ export default function App() {
         wDayName,
         hours: typeof hoursVal === 'number' ? hoursVal.toFixed(2) : hoursVal,
         markDirection: dayConfig.markDirection || 'entrada',
+        numMarcas: dayConfig.numMarcas !== undefined ? dayConfig.numMarcas : 2,
       });
     }
 
@@ -764,7 +633,9 @@ export default function App() {
             setSelectedAttendanceStatusFilter={setSelectedAttendanceStatusFilter}
             availableTurnos={availableTurnos}
             scheduledWorkersCount={scheduledWorkersCount}
-            onSort={setAttendanceSortField}
+            onSort={handleAttendanceSort}
+            sortField={attendanceSortField}
+            sortDir={attendanceSortDir}
           />
         )}
 
@@ -782,7 +653,9 @@ export default function App() {
             workerCurrentPage={workerCurrentPage}
             setWorkerCurrentPage={setWorkerCurrentPage}
             workerTotalPages={workerTotalPages}
-            onSort={setWorkerSortField}
+            onSort={handleWorkerSort}
+            sortField={workerSortField}
+            sortDir={workerSortDir}
             workerMonthYear={workerMonthYear}
             setWorkerMonthYear={setWorkerMonthYear}
             shiftTemplates={shiftTemplates}
@@ -814,33 +687,13 @@ export default function App() {
               setEditingDay({ dayIndex, dayNum, config });
               setModalDayHours(String(config.hours));
               setModalMarkDirection(config.markDirection);
+              setModalNumMarcas(config.numMarcas !== undefined ? config.numMarcas : 2);
             }}
           />
         )}
 
         {isDataLoaded && !loading && currentView === 'incidencias' && (
-          <IncidenciasView
-            selectedMonthYear={incidentMonthYear}
-            setSelectedMonthYear={setIncidentMonthYear}
-            incidentPeriod={incidentPeriod}
-            setIncidentPeriod={setIncidentPeriod}
-            incidentTypeFilter={incidentTypeFilter}
-            setIncidentTypeFilter={setIncidentTypeFilter}
-            incidentSearchTerm={incidentSearchTerm}
-            setIncidentSearchTerm={setIncidentSearchTerm}
-            incidentShiftFilter={incidentShiftFilter}
-            setIncidentShiftFilter={setIncidentShiftFilter}
-            availableTurnos={availableTurnos}
-            incidents={incidentsList}
-            filteredIncidents={sortedIncidents}
-            paginatedIncidents={paginatedIncidents}
-            currentPage={incidentCurrentPage}
-            setCurrentPage={setIncidentCurrentPage}
-            totalPages={incidentTotalPages}
-            totalIncidentsCount={incidentsList.length}
-            absentCount={absentIncidentsCount}
-            onSort={setIncidentSortField}
-          />
+          <IncidenciasView />
         )}
       </main>
 
@@ -861,6 +714,8 @@ export default function App() {
         setModalDayHours={setModalDayHours}
         modalMarkDirection={modalMarkDirection}
         setModalMarkDirection={setModalMarkDirection}
+        modalNumMarcas={modalNumMarcas}
+        setModalNumMarcas={setModalNumMarcas}
         onSave={handleSaveDayModal}
       />
 
