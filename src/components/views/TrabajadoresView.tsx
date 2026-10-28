@@ -1,8 +1,9 @@
-import type { UniqueWorker, DayConfig, WorkerDaySummary } from '../../types';
+import type { UniqueWorker, DayConfig } from '../../types';
 import { getTurnoOnDate } from '../../utils/dateUtils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { API_BASE } from '../../constants';
 import { WorkerCalendarModal } from '../modals/WorkerCalendarModal';
+import { CustomDropdown } from '../CustomDropdown';
 
 interface TrabajadoresViewProps {
   uniqueWorkers: UniqueWorker[];
@@ -12,6 +13,8 @@ interface TrabajadoresViewProps {
   setWorkerSearchTerm: (term: string) => void;
   selectedTurno: string;
   setSelectedTurno: (turno: string) => void;
+  selectedWorkerStatusFilter: string;
+  setSelectedWorkerStatusFilter: (s: string) => void;
   selectedDate: string;
   availableTurnos: string[];
   workerCurrentPage: number;
@@ -29,16 +32,18 @@ interface TrabajadoresViewProps {
 export function TrabajadoresView({
   uniqueWorkers,
   filteredWorkers,
-  paginatedWorkers,
+  paginatedWorkers: _paginatedWorkers,
   workerSearchTerm,
   setWorkerSearchTerm,
   selectedTurno,
   setSelectedTurno,
+  selectedWorkerStatusFilter,
+  setSelectedWorkerStatusFilter,
   selectedDate,
   availableTurnos,
   workerCurrentPage,
   setWorkerCurrentPage,
-  workerTotalPages,
+  workerTotalPages: _workerTotalPages,
   onEditWorker,
   onSort,
   sortField,
@@ -50,161 +55,138 @@ export function TrabajadoresView({
   const [workerStats, setWorkerStats] = useState<Record<string, { singleMarks: number; absences: number }>>({});
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [calendarWorker, setCalendarWorker] = useState<UniqueWorker | null>(null);
+  const [workerPeriodFilter, setWorkerPeriodFilter] = useState<string>('FULL');
 
-  // Calcular estadísticas mensuales (días 1 marca y ausencias) para todos los trabajadores filtrados o paginados en el mes seleccionado
+  // Obtener estadísticas mensuales/quincenales calculadas por el backend
   useEffect(() => {
-    const fetchMonthlyStats = async () => {
+    const fetchStats = async () => {
       if (!workerMonthYear) return;
       setLoadingStats(true);
       try {
-        const [yearStr, monthStr] = workerMonthYear.split('-');
-        const year = parseInt(yearStr, 10);
-        const month = parseInt(monthStr, 10);
-        const daysInMonth = new Date(year, month, 0).getDate();
-
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const yYyyy = yesterday.getFullYear();
-        const yMm = String(yesterday.getMonth() + 1).padStart(2, '0');
-        const yDd = String(yesterday.getDate()).padStart(2, '0');
-        const yesterdayStr = `${yYyyy}-${yMm}-${yDd}`;
-
-        const statsMap: Record<string, { singleMarks: number; absences: number }> = {};
-
-        // Recorrer días del mes hasta ayer (o fin de mes si el mes ya pasó)
-        const dateStrs: string[] = [];
-        for (let d = 1; d <= daysInMonth; d++) {
-          const dStr = String(d).padStart(2, '0');
-          const dateStr = `${workerMonthYear}-${dStr}`;
-          if (dateStr <= yesterdayStr) {
-            dateStrs.push(dateStr);
-          }
-        }
-
-        // Para cada fecha, obtener la asistencia
-        const dailyDataCache: Record<string, WorkerDaySummary[]> = {};
-        for (const dateStr of dateStrs) {
-          try {
-            const res = await fetch(`${API_BASE}/api/attendance?date=${dateStr}`);
-            const summaries: WorkerDaySummary[] = await res.json();
-            dailyDataCache[dateStr] = summaries;
-          } catch (e) {
-            dailyDataCache[dateStr] = [];
-          }
-        }
-
-        // Evaluar por cada trabajador
-        uniqueWorkers.forEach((worker) => {
-          let singleMarks = 0;
-          let absences = 0;
-
-          dateStrs.forEach((dateStr, idx) => {
-            const dayNum = idx + 1;
-            const dayIndex = (dayNum - 1) % 31;
-            const currentTurno = getTurnoOnDate(worker.defaultTurno, worker.rules, dateStr);
-            const template = shiftTemplates[currentTurno];
-            const isRestDay = template && Array.isArray(template) && template[dayIndex] && String(template[dayIndex].hours).toLowerCase() === 'p';
-
-            if (isRestDay) return;
-
-            const summaries = dailyDataCache[dateStr] || [];
-            const wSummary = summaries.find(s => s.no === worker.no || s.nombre.trim().toLowerCase() === worker.nombre.trim().toLowerCase());
-
-            if (!wSummary) {
-              absences++;
-            } else {
-              const marks = [
-                wSummary.marca1,
-                wSummary.marca2,
-                wSummary.entradaMañana,
-                wSummary.salidaMañana,
-                wSummary.entradaTarde,
-                wSummary.salidaTarde
-              ].filter(Boolean);
-
-              if (marks.length === 1) {
-                singleMarks++;
-              } else if (marks.length === 0) {
-                absences++;
-              }
-            }
-          });
-
-          statsMap[worker.nombre] = { singleMarks, absences };
-        });
-
-        setWorkerStats(statsMap);
+        const res = await fetch(`${API_BASE}/api/workers/stats?monthYear=${workerMonthYear}&period=${workerPeriodFilter}`);
+        const data = await res.json();
+        setWorkerStats(data || {});
       } catch (e) {
         console.error(e);
+        setWorkerStats({});
       } finally {
         setLoadingStats(false);
       }
     };
 
-    fetchMonthlyStats();
-  }, [workerMonthYear, uniqueWorkers, shiftTemplates]);
+    fetchStats();
+  }, [workerMonthYear, workerPeriodFilter]);
+
+  // Filtrar trabajadores adicionales por estado de asistencia (Todos, Una sola marca, Ausentes)
+  const statusFilteredWorkers = useMemo(() => {
+    return filteredWorkers.filter((worker) => {
+      if (selectedWorkerStatusFilter === 'ALL') return true;
+      const stats = workerStats[worker.nombre] || { singleMarks: 0, absences: 0 };
+      if (selectedWorkerStatusFilter === 'SINGLE_MARK') return stats.singleMarks > 0;
+      if (selectedWorkerStatusFilter === 'ABSENT') return stats.absences > 0;
+      return true;
+    });
+  }, [filteredWorkers, selectedWorkerStatusFilter, workerStats]);
+
+  const pageSize = 15;
+  const workerTotalPages = Math.ceil(statusFilteredWorkers.length / pageSize) || 1;
+  const paginatedWorkers = useMemo(() => {
+    const start = (workerCurrentPage - 1) * pageSize;
+    return statusFilteredWorkers.slice(start, start + pageSize);
+  }, [statusFilteredWorkers, workerCurrentPage, pageSize]);
 
   return (
     <>
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <h3>Total Trabajadores</h3>
-          <p className="metric-value">{uniqueWorkers.length}</p>
+      <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Trabajadores</h3>
+          <p className="metric-value text-xl font-extrabold text-slate-900">{uniqueWorkers.length}</p>
         </div>
-        <div className="metric-card">
-          <h3>Trabajadores Filtrados</h3>
-          <p className="metric-value">{filteredWorkers.length}</p>
+        <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Trabajadores Filtrados</h3>
+          <p className="metric-value text-xl font-extrabold text-sky-600">{statusFilteredWorkers.length}</p>
         </div>
       </div>
 
-      <div className="controls-bar flex flex-wrap items-center justify-between gap-6 mb-6">
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Buscar trabajador por Nombre o No..."
-              value={workerSearchTerm}
-              onChange={(e) => {
-                setWorkerSearchTerm(e.target.value);
-                setWorkerCurrentPage(1);
-              }}
-            />
-          </div>
-
-          <div className="filter-box">
-            <label htmlFor="turno-select">🕒 Turno:</label>
-            <select
-              id="turno-select"
-              value={selectedTurno}
-              onChange={(e) => {
-                setSelectedTurno(e.target.value);
-                setWorkerCurrentPage(1);
-              }}
-            >
-              <option value="ALL">Todos los Turnos</option>
-              {availableTurnos.map((turno) => (
-                <option key={turno} value={turno}>
-                  {turno}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="controls-bar flex flex-wrap items-start gap-4 mb-6">
+        <div className="visual-date-picker w-[260px] mb-0">
+          <label className="vdp-label">
+            🔍 Buscar por Nombre o No.
+          </label>
+          <input
+            type="text"
+            placeholder="Buscar:"
+            value={workerSearchTerm}
+            onChange={(e) => {
+              setWorkerSearchTerm(e.target.value);
+              setWorkerCurrentPage(1);
+            }}
+            className="w-full bg-white border-2 border-[#94a3b8] rounded-lg px-4 py-3 text-slate-900 text-sm font-semibold outline-none focus:border-green-600 placeholder:text-slate-400"
+          />
         </div>
 
-        <div className="filter-box">
-          <label htmlFor="worker-month-select">📅 Mes de Estadísticas:</label>
+        <div className="w-[220px]">
+          <CustomDropdown
+            label="🔄 Filtrar por Turno:"
+            value={selectedTurno}
+            onChange={(val) => {
+              setSelectedTurno(val);
+              setWorkerCurrentPage(1);
+            }}
+            options={[
+              { label: 'Todos los turnos', value: 'ALL' },
+              ...availableTurnos.map((t) => ({ label: t, value: t }))
+            ]}
+            width="w-full"
+          />
+        </div>
+
+        <div className="w-[220px]">
+          <CustomDropdown
+            label="👤 Estado de Asistencia:"
+            value={selectedWorkerStatusFilter}
+            onChange={(val) => {
+              setSelectedWorkerStatusFilter(val);
+              setWorkerCurrentPage(1);
+            }}
+            options={[
+              { label: 'Todos', value: 'ALL' },
+              { label: 'Una sola marca', value: 'SINGLE_MARK' },
+              { label: 'Ausentes', value: 'ABSENT' }
+            ]}
+            width="w-full"
+          />
+        </div>
+
+        <div className="w-[200px] ml-auto">
+          <CustomDropdown
+            label="📅 Periodo:"
+            value={workerPeriodFilter}
+            onChange={(val) => {
+              setWorkerPeriodFilter(val);
+              setWorkerCurrentPage(1);
+            }}
+            options={[
+              { label: 'Mes completo', value: 'FULL' },
+              { label: '1ª Quincena (1-15)', value: 'Q1' },
+              { label: '2ª Quincena (16-fin)', value: 'Q2' }
+            ]}
+            width="w-full"
+          />
+        </div>
+
+        <div className="visual-date-picker w-[220px]">
+          <label className="vdp-label">📅 Mes de Estadísticas:</label>
           <input
-            id="worker-month-select"
             type="month"
             value={workerMonthYear}
             onChange={(e) => setWorkerMonthYear(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="vdp-header-bar w-full bg-white text-slate-800 font-semibold text-base outline-none cursor-pointer"
           />
         </div>
       </div>
 
-      <p className="hint-text">💡 Haz clic en cualquier trabajador para configurar reglas de turno, o usa el botón de calendario para ver su detalle mensual.</p>
+      <p className="hint-text mb-6">💡 Haz clic en cualquier trabajador para configurar reglas de turno, o usa el botón de calendario para ver su detalle mensual.</p>
 
       <div className="table-responsive">
         <table className="nomina-table">
