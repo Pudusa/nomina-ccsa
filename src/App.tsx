@@ -29,6 +29,7 @@ export default function App() {
 
   const [workerSearchTerm, setWorkerSearchTerm] = useState<string>('');
   const [selectedTurno, setSelectedTurno] = useState<string>('ALL');
+  const [selectedWorkerStatusFilter, setSelectedWorkerStatusFilter] = useState<string>('ALL');
   const [workerCurrentPage, setWorkerCurrentPage] = useState<number>(1);
 
   // Estado para el mes de trabajadores (si hoy es día 1, mostrar mes anterior; si no, mes actual)
@@ -648,6 +649,8 @@ export default function App() {
             setWorkerSearchTerm={setWorkerSearchTerm}
             selectedTurno={selectedTurno}
             setSelectedTurno={setSelectedTurno}
+            selectedWorkerStatusFilter={selectedWorkerStatusFilter}
+            setSelectedWorkerStatusFilter={setSelectedWorkerStatusFilter}
             selectedDate={selectedDate}
             availableTurnos={availableTurnos}
             workerCurrentPage={workerCurrentPage}

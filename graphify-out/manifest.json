@@ -24,9 +24,9 @@
     "semantic_hash": "1b73c34967d74f4cb6791f17a9c2d4a9"
   },
   "server/index.cjs": {
-    "mtime": 1793115141.3240097,
-    "seen": 1793128025.5979922,
-    "ast_hash": "e587c04d1f906b4990a24717d3d3ce63",
+    "mtime": 1793191209.5015137,
+    "seen": 1793191850.9035597,
+    "ast_hash": "542b75e0772d431a4b2b278d85448b56",
     "semantic_hash": ""
   },
   "server/services/attendance.service.js": {
@@ -36,9 +36,9 @@
     "semantic_hash": "1bfe8cc307a21eabee136ee983ccc4a4"
   },
   "src/App.tsx": {
-    "mtime": 1793118017.098064,
-    "seen": 1793128025.5979922,
-    "ast_hash": "212fdc79143480f15631b7dd86cbde3a",
+    "mtime": 1793130430.5456202,
+    "seen": 1793130550.6627936,
+    "ast_hash": "8a537bf06ae77e780f4da8ea4e64c934",
     "semantic_hash": ""
   },
   "src/components/VisualDatePicker.tsx": {
@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "src/components/views/TrabajadoresView.tsx": {
-    "mtime": 1793040072.8760705,
-    "seen": 1793128025.5979922,
-    "ast_hash": "4825b13e2a7ffcc8eaeed0ffd6cac79f",
+    "mtime": 1793189772.0568757,
+    "seen": 1793191850.9045677,
+    "ast_hash": "89214ecd954ae8970688d79c5052a8d1",
     "semantic_hash": ""
   },
   "src/components/views/TurnosView.tsx": {
@@ -209,16 +209,10 @@
     "ast_hash": "3c38396a924bf0ff4492e540e8770971",
     "semantic_hash": ""
   },
-  "cap/Vista Incidencias.png": {
-    "mtime": 1793127674.0198143,
-    "seen": 1793128025.5979922,
-    "ast_hash": "fb1dd73a44b73dfacaf9477c23176aae",
-    "semantic_hash": ""
-  },
   "src/components/modals/WorkerCalendarModal.tsx": {
-    "mtime": 1793033328.824653,
-    "seen": 1793033401.7422159,
-    "ast_hash": "ec3f12bb75062624e0e3ae0b7c860570",
+    "mtime": 1793191575.712418,
+    "seen": 1793191850.9045677,
+    "ast_hash": "719727ab70fb5eae82659dfc68ed6cbc",
     "semantic_hash": ""
   },
   "server/check_db.cjs": {
@@ -245,22 +239,10 @@
     "ast_hash": "23190da4edd82f19f65faa9172d5f9fb",
     "semantic_hash": ""
   },
-  "cap/1 referencia.png": {
-    "mtime": 1793107297.2830257,
-    "seen": 1793128025.5979922,
-    "ast_hash": "b90caef57edab30ca07e4c15d94d71c0",
-    "semantic_hash": ""
-  },
-  "cap/2 real.png": {
-    "mtime": 1793119271.8797877,
-    "seen": 1793128025.5979922,
-    "ast_hash": "353e5fb59437ae88210344a5ecdc9803",
-    "semantic_hash": ""
-  },
-  "cap/3.png": {
-    "mtime": 1793120354.5289557,
-    "seen": 1793128025.5979922,
-    "ast_hash": "78235475541fd228639e1ccb1cdeb982",
+  "cap/img.png": {
+    "mtime": 1793132483.138,
+    "seen": 1793189217.4304028,
+    "ast_hash": "da7152b490136414640f8bb96fc02e51",
     "semantic_hash": ""
   }
 }

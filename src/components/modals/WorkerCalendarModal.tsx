@@ -1,93 +1,35 @@
 import { useEffect, useState } from 'react';
-import type { UniqueWorker, DayConfig, WorkerDaySummary } from '../../types';
-import { getTurnoOnDate } from '../../utils/dateUtils';
+import type { UniqueWorker } from '../../types';
 import { API_BASE } from '../../constants';
 
 interface WorkerCalendarModalProps {
   worker: UniqueWorker;
   monthYear: string; // "YYYY-MM"
   onClose: () => void;
-  shiftTemplates: Record<string, DayConfig[]>;
+  shiftTemplates?: any;
 }
 
-export function WorkerCalendarModal({ worker, monthYear, onClose, shiftTemplates }: WorkerCalendarModalProps) {
+export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalendarModalProps) {
   const [dailyStatus, setDailyStatus] = useState<Record<string, 'verde' | 'amarillo' | 'rojo' | 'gris'>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchMonthData = async () => {
+    const fetchCalendarData = async () => {
       setLoading(true);
       try {
-        const [yearStr, monthStr] = monthYear.split('-');
-        const year = parseInt(yearStr, 10);
-        const month = parseInt(monthStr, 10);
-        const daysInMonth = new Date(year, month, 0).getDate();
-
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const yYyyy = yesterday.getFullYear();
-        const yMm = String(yesterday.getMonth() + 1).padStart(2, '0');
-        const yDd = String(yesterday.getDate()).padStart(2, '0');
-        const yesterdayStr = `${yYyyy}-${yMm}-${yDd}`;
-
-        const statusMap: Record<string, 'verde' | 'amarillo' | 'rojo' | 'gris'> = {};
-
-        for (let d = 1; d <= daysInMonth; d++) {
-          const dStr = String(d).padStart(2, '0');
-          const dateStr = `${monthYear}-${dStr}`;
-          const dayIndex = (d - 1) % 31;
-
-          const currentTurno = getTurnoOnDate(worker.defaultTurno, worker.rules, dateStr);
-          const template = shiftTemplates[currentTurno];
-          const isRestDay = template && Array.isArray(template) && template[dayIndex] && String(template[dayIndex].hours).toLowerCase() === 'p';
-
-          if (dateStr > yesterdayStr || isRestDay) {
-            statusMap[dateStr] = 'gris';
-            continue;
-          }
-
-          // Consultar asistencia para este día y este trabajador
-          try {
-            const res = await fetch(`${API_BASE}/api/attendance?date=${dateStr}`);
-            const summaries: WorkerDaySummary[] = await res.json();
-            const wSummary = summaries.find(s => s.no === worker.no || s.nombre.trim().toLowerCase() === worker.nombre.trim().toLowerCase());
-
-            if (!wSummary) {
-              statusMap[dateStr] = 'rojo';
-            } else {
-              const marks = [
-                wSummary.marca1,
-                wSummary.marca2,
-                wSummary.entradaMañana,
-                wSummary.salidaMañana,
-                wSummary.entradaTarde,
-                wSummary.salidaTarde
-              ].filter(Boolean);
-
-              if (marks.length >= 2) {
-                statusMap[dateStr] = 'verde';
-              } else if (marks.length === 1) {
-                statusMap[dateStr] = 'amarillo';
-              } else {
-                statusMap[dateStr] = 'rojo';
-              }
-            }
-          } catch (err) {
-            statusMap[dateStr] = 'gris';
-          }
-        }
-
-        setDailyStatus(statusMap);
+        const res = await fetch(`${API_BASE}/api/workers/calendar?workerNo=${worker.no}&monthYear=${monthYear}`);
+        const data = await res.json();
+        setDailyStatus(data || {});
       } catch (e) {
         console.error(e);
+        setDailyStatus({});
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMonthData();
-  }, [worker, monthYear, shiftTemplates]);
+    fetchCalendarData();
+  }, [worker, monthYear]);
 
   const [yearStr, monthStr] = monthYear.split('-');
   const year = parseInt(yearStr, 10);
