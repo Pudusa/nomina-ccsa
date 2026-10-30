@@ -1,7 +1,7 @@
 import type { UniqueWorker, DayConfig } from '../../types';
 import { getTurnoOnDate } from '../../utils/dateUtils';
 import { useState, useEffect, useMemo } from 'react';
-import { API_BASE } from '../../constants';
+import { apiFetch } from '../../utils/api';
 import { WorkerCalendarModal } from '../modals/WorkerCalendarModal';
 import { CustomDropdown } from '../CustomDropdown';
 
@@ -63,7 +63,7 @@ export function TrabajadoresView({
       if (!workerMonthYear) return;
       setLoadingStats(true);
       try {
-        const res = await fetch(`${API_BASE}/api/workers/stats?monthYear=${workerMonthYear}&period=${workerPeriodFilter}`);
+        const res = await apiFetch(`/api/workers/stats?monthYear=${workerMonthYear}&period=${workerPeriodFilter}`);
         const data = await res.json();
         setWorkerStats(data || {});
       } catch (e) {

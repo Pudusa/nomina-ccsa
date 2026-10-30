@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { UniqueWorker } from '../../types';
-import { API_BASE } from '../../constants';
+import { apiFetch } from '../../utils/api';
 
 interface WorkerCalendarModalProps {
   worker: UniqueWorker;
@@ -17,7 +17,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
     const fetchCalendarData = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/workers/calendar?workerNo=${worker.no}&monthYear=${monthYear}`);
+        const res = await apiFetch(`/api/workers/calendar?workerNo=${worker.no}&monthYear=${monthYear}`);
         const data = await res.json();
         setDailyStatus(data || {});
       } catch (e) {

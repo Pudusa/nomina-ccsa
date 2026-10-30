@@ -1,0 +1,57 @@
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: nomina-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - AUTH_PORT=3001
+      - DB_PATH=/app/data/nomina.db
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+    volumes:
+      - db_data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nomina-network
+
+  nomina-monolith:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: nomina-monolith-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - DB_PATH=/app/data/nomina.db
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+    volumes:
+      - db_data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - nomina-network
+
+volumes:
+  db_data:
+
+networks:
+  nomina-network:
+    driver: bridge

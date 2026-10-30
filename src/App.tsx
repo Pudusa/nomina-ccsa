@@ -3,7 +3,8 @@ import * as XLSX from 'xlsx';
 import './App.css';
 import type { WorkerDaySummary, UniqueWorker, DayConfig } from './types';
 import { getTodayDateString, getYesterdayDateString, getTurnoOnDate, WEEKDAY_NAMES } from './utils/dateUtils';
-import { API_BASE } from './constants';
+import { apiFetch } from './utils/api';
+import { LoginModal } from './components/modals/LoginModal';
 import { AsistenciasView } from './components/views/AsistenciasView';
 import { TrabajadoresView } from './components/views/TrabajadoresView';
 import { TurnosView } from './components/views/TurnosView';
@@ -13,9 +14,20 @@ import { EditDayModal } from './components/modals/EditDayModal';
 import { EditWorkerModal } from './components/modals/EditWorkerModal';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
   const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+    };
+    window.addEventListener('nomina:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('nomina:unauthorized', handleUnauthorized);
+    };
+  }, []);
 
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -73,7 +85,7 @@ export default function App() {
   const fetchShiftTemplates = async (ym?: string) => {
     try {
       const targetYm = ym || selectedMonthYear || getTodayDateString().substring(0, 7);
-      const res = await fetch(`${API_BASE}/api/shift-templates?year_month=${targetYm}`);
+      const res = await apiFetch(`/api/shift-templates?year_month=${targetYm}`);
       const data = await res.json();
       setShiftTemplates(data);
       const keys = Object.keys(data);
@@ -93,7 +105,7 @@ export default function App() {
 
   const refreshData = async (dateToSelect?: string) => {
     try {
-      const datesRes = await fetch(`${API_BASE}/api/dates`);
+      const datesRes = await apiFetch('/api/dates');
       const dates: string[] = await datesRes.json();
 
       if (dates.length > 0) {
@@ -113,11 +125,11 @@ export default function App() {
         const ym = targetDate.substring(0, 7);
         setSelectedMonthYear(ym);
 
-        const workersRes = await fetch(`${API_BASE}/api/workers`);
+        const workersRes = await apiFetch('/api/workers');
         const workers = await workersRes.json();
         setUniqueWorkers(workers);
 
-        const attRes = await fetch(`${API_BASE}/api/attendance?date=${targetDate}`);
+        const attRes = await apiFetch(`/api/attendance?date=${targetDate}`);
         const attendance = await attRes.json();
         setWorkerSummaries(attendance);
 
@@ -133,16 +145,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    refreshData();
-  }, []);
+    if (isAuthenticated) {
+      refreshData();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!selectedDate || !isDataLoaded) return;
-    fetch(`${API_BASE}/api/attendance?date=${selectedDate}`)
+    if (!selectedDate || !isDataLoaded || !isAuthenticated) return;
+    apiFetch(`/api/attendance?date=${selectedDate}`)
       .then((res) => res.json())
       .then((data) => setWorkerSummaries(data))
       .catch((err) => console.error(err));
-  }, [selectedDate, isDataLoaded]);
+  }, [selectedDate, isDataLoaded, isAuthenticated]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -182,7 +196,7 @@ export default function App() {
       const formData = new FormData();
       formData.append('file', correctedFile);
 
-      const res = await fetch(`${API_BASE}/api/upload`, {
+      const res = await apiFetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
@@ -355,7 +369,7 @@ export default function App() {
     if (!editingWorker || !ruleStartDate) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/workers/${editingWorker.no}/rules`, {
+      const res = await apiFetch(`/api/workers/${editingWorker.no}/rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -377,7 +391,7 @@ export default function App() {
 
   const handleDeleteRule = async (ruleId: number) => {
     try {
-      const res = await fetch(`${API_BASE}/api/rules/${ruleId}`, {
+      const res = await apiFetch(`/api/rules/${ruleId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Error al eliminar la regla');
@@ -405,7 +419,7 @@ export default function App() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/shift-templates`, {
+      const res = await apiFetch('/api/shift-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -427,7 +441,7 @@ export default function App() {
   const handleSaveAllChanges = async () => {
     if (!selectedShiftTemplate) return;
     try {
-      const res = await fetch(`${API_BASE}/api/shift-templates`, {
+      const res = await apiFetch('/api/shift-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -462,7 +476,7 @@ export default function App() {
     }));
 
     try {
-      const res = await fetch(`${API_BASE}/api/shift-templates`, {
+      const res = await apiFetch('/api/shift-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -486,11 +500,11 @@ export default function App() {
   const handleDeleteShift = async (shiftName: string) => {
     if (!confirm(`¿Estás seguro de eliminar el turno "${shiftName}"?`)) return;
     try {
-      const res = await fetch(`${API_BASE}/api/shift-templates/${encodeURIComponent(shiftName)}`, {
+      const res = await apiFetch(`/api/shift-templates/${encodeURIComponent(shiftName)}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Error al eliminar el turno');
-      const templatesRes = await fetch(`${API_BASE}/api/shift-templates`);
+      const templatesRes = await apiFetch('/api/shift-templates');
       const templatesData = await templatesRes.json();
       setShiftTemplates(templatesData);
       const keys = Object.keys(templatesData);
@@ -593,6 +607,19 @@ export default function App() {
                 📁 Cambiar Archivo
                 <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
               </label>
+            </li>
+            <li className="ml-auto">
+              <button
+                onClick={() => {
+                  localStorage.removeItem('nomina_token');
+                  localStorage.removeItem('nomina_user');
+                  setIsAuthenticated(false);
+                }}
+                className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-700 hover:text-white transition flex items-center gap-1.5"
+                title="Cerrar sesión"
+              >
+                🚪 Cerrar Sesión
+              </button>
             </li>
           </ul>
         )}
@@ -737,6 +764,15 @@ export default function App() {
         onSave={handleSaveTurnoRule}
         onDeleteRule={handleDeleteRule}
       />
+
+      {!isAuthenticated && (
+        <LoginModal
+          onLoginSuccess={() => {
+            setIsAuthenticated(true);
+            refreshData();
+          }}
+        />
+      )}
     </div>
   );
 }
