@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN npm ci && npm rebuild better-sqlite3
 WORKDIR /app/services/auth-service
 RUN npm ci && npm rebuild better-sqlite3
 
-FROM node:20-slim
+FROM node:24-slim
 
 WORKDIR /app
 

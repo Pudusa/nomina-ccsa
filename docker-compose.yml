@@ -8,12 +8,84 @@ services:
       - "3001:3001"
     environment:
       - AUTH_PORT=3001
-      - DB_PATH=/app/data/nomina.db
+      - DB_PATH=/app/data/auth.sqlite
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
     volumes:
-      - db_data:/app/data
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nomina-network
+
+  workers-service:
+    build:
+      context: .
+      dockerfile: services/workers-service/Dockerfile
+    container_name: nomina-workers-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - DB_PATH=/app/data/workers.sqlite
+      - NOMINA_DB_PATH=/app/data/nomina.db
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nomina-network
+
+  attendance-service:
+    build:
+      context: .
+      dockerfile: services/attendance-service/Dockerfile
+    container_name: nomina-attendance-service
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - DB_PATH=/app/data/attendance.sqlite
+      - NOMINA_DB_PATH=/app/data/nomina.db
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nomina-network
+
+  shifts-service:
+    build:
+      context: .
+      dockerfile: services/shifts-service/Dockerfile
+    container_name: nomina-shifts-service
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - DB_PATH=/app/data/shifts.sqlite
+      - NOMINA_DB_PATH=/app/data/nomina.db
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -32,10 +104,13 @@ services:
     environment:
       - PORT=4000
       - DB_PATH=/app/data/nomina.db
-      - AUTH_SERVICE_URL=http://auth-service:3001
+      - AUTH_SERVICE_URL=http://nomina-auth-service:3001
+      - WORKERS_SERVICE_URL=http://nomina-workers-service:3002
+      - ATTENDANCE_SERVICE_URL=http://nomina-attendance-service:3003
+      - SHIFTS_SERVICE_URL=http://nomina-shifts-service:3004
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
     volumes:
-      - db_data:/app/data
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
       interval: 30s
@@ -45,12 +120,15 @@ services:
     depends_on:
       auth-service:
         condition: service_healthy
+      workers-service:
+        condition: service_healthy
+      attendance-service:
+        condition: service_healthy
+      shifts-service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - nomina-network
-
-volumes:
-  db_data:
 
 networks:
   nomina-network:

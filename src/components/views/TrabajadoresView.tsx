@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../../utils/api';
 import { WorkerCalendarModal } from '../modals/WorkerCalendarModal';
 import { CustomDropdown } from '../CustomDropdown';
+import * as XLSX from 'xlsx';
 
 interface TrabajadoresViewProps {
   uniqueWorkers: UniqueWorker[];
@@ -56,6 +57,38 @@ export function TrabajadoresView({
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [calendarWorker, setCalendarWorker] = useState<UniqueWorker | null>(null);
   const [workerPeriodFilter, setWorkerPeriodFilter] = useState<string>('FULL');
+  const [exporting, setExporting] = useState<boolean>(false);
+
+  const handleExportIncidents = async () => {
+    try {
+      setExporting(true);
+      const res = await apiFetch(`/api/workers/incidents?monthYear=${workerMonthYear}`);
+      if (!res.ok) throw new Error('Error al obtener incidencias');
+      const allIncidents = await res.json();
+
+      if (allIncidents.length === 0) {
+        alert('No hay incidencias para exportar en este período.');
+        return;
+      }
+
+      const data = allIncidents.map((inc: any) => ({
+        'No.': inc.workerNo,
+        'Nombre': inc.workerNombre,
+        'Fecha': inc.date,
+        'Tipo': inc.type
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Incidencias');
+      XLSX.writeFile(wb, `Incidencias_${workerMonthYear}.xlsx`);
+    } catch (error) {
+      console.error('Error exporting incidents:', error);
+      alert('Error al exportar incidencias');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Obtener estadísticas mensuales/quincenales calculadas por el backend
   useEffect(() => {
@@ -183,6 +216,24 @@ export function TrabajadoresView({
             onChange={(e) => setWorkerMonthYear(e.target.value)}
             className="vdp-header-bar w-full bg-white text-slate-800 font-semibold text-base outline-none cursor-pointer"
           />
+        </div>
+
+        <div className="flex items-end mb-1">
+          <button
+            onClick={handleExportIncidents}
+            disabled={exporting || !workerMonthYear}
+            className={`px-4 py-3 rounded-lg font-bold text-sm transition-all shadow-md flex items-center gap-2 ${
+              exporting 
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                : 'bg-green-600 text-white hover:bg-green-700 active:transform active:scale-95'
+            }`}
+          >
+            {exporting ? (
+              <>⌛ Generando...</>
+            ) : (
+              <>📥 Exportar Incidencias</>
+            )}
+          </button>
         </div>
       </div>
 

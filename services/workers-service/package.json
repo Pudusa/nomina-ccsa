@@ -1,0 +1,16 @@
+{
+  "name": "nomina-workers-service",
+  "version": "1.0.0",
+  "description": "Microservicio de Trabajadores y Turnos para Nomina CCSA",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

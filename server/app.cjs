@@ -4,9 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./database.cjs');
 
-const attendanceRoutes = require('./routes/attendance.routes.cjs');
-const workersRoutes = require('./routes/workers.routes.cjs');
-const shiftsRoutes = require('./routes/shifts.routes.cjs');
+const attendanceProxyRoutes = require('./routes/attendance.proxy.routes.cjs');
+const workersProxyRoutes = require('./routes/workers.proxy.routes.cjs');
+const shiftsProxyRoutes = require('./routes/shifts.proxy.routes.cjs');
 const authProxyRoutes = require('./routes/auth.proxy.routes.cjs');
 
 const app = express();
@@ -86,9 +86,9 @@ app.get('/metrics', (req, res) => {
 
 // Mount modular routes under /api
 app.use('/api', authProxyRoutes);
-app.use('/api', attendanceRoutes);
-app.use('/api', workersRoutes);
-app.use('/api', shiftsRoutes);
+app.use('/api', attendanceProxyRoutes);
+app.use('/api', workersProxyRoutes);
+app.use('/api', shiftsProxyRoutes);
 
 // Serve frontend static files if built in production / docker
 const distPath = path.join(__dirname, '../dist');

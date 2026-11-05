@@ -4,7 +4,8 @@ function parseToDate(val, XLSX) {
     if (typeof val === 'number') {
         const dateObj = XLSX.SSF.parse_date_code(val);
         if (dateObj) {
-            return new Date(Date.UTC(dateObj.y, dateObj.m - 1, dateObj.d, dateObj.H, dateObj.M, dateObj.S));
+            // Usamos Date local, no UTC
+            return new Date(dateObj.y, dateObj.m - 1, dateObj.d, dateObj.H, dateObj.M, dateObj.S);
         }
     }
     const parsed = new Date(val);
@@ -16,6 +17,17 @@ function formatDateKey(d) {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function formatDateTime(d) {
+    if (!d || isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 function filterDuplicatePunches(times) {
@@ -47,19 +59,19 @@ function classifyPunches(times, turno, ruleFirstMarkDir, numMarcas = 2) {
     const isNightOrAfternoon = tLower.includes('turno 2') || tLower.includes('nocturno') || tLower.includes('vespertino');
     const isSalidaFirst = ruleFirstMarkDir === 'salida' || isNightOrAfternoon;
 
-    const marca1 = times[0] ? times[0].toISOString() : null;
-    const marca2 = (times.length > 1 && numMarcas > 1) ? times[1].toISOString() : null;
+    const marca1 = formatDateTime(times[0]);
+    const marca2 = (times.length > 1 && numMarcas > 1) ? formatDateTime(times[1]) : null;
 
     if (numMarcas === 1) {
         // 1 sola marca esperada
         const t = times[0];
-        const timeDec = t.getUTCHours() + t.getUTCMinutes() / 60;
+        const timeDec = t.getHours() + t.getMinutes() / 60;
         if (!isSalidaFirst) {
-            if (timeDec < 12.5) entradaMañana = t.toISOString();
-            else entradaTarde = t.toISOString();
+            if (timeDec < 12.5) entradaMañana = formatDateTime(t);
+            else entradaTarde = formatDateTime(t);
         } else {
-            if (timeDec < 12.5) salidaMañana = t.toISOString();
-            else salidaTarde = t.toISOString();
+            if (timeDec < 12.5) salidaMañana = formatDateTime(t);
+            else salidaTarde = formatDateTime(t);
         }
     } else {
         // 2 marcas esperadas
@@ -67,35 +79,33 @@ function classifyPunches(times, turno, ruleFirstMarkDir, numMarcas = 2) {
             // Orden normal: Entrada primero, Salida después
             if (times.length > 0) {
                 const t0 = times[0];
-                const timeDec0 = t0.getUTCHours() + t0.getUTCMinutes() / 60;
-                if (timeDec0 < 12.5) entradaMañana = t0.toISOString();
-                else entradaTarde = t0.toISOString();
+                const timeDec0 = t0.getHours() + t0.getMinutes() / 60;
+                if (timeDec0 < 12.5) entradaMañana = formatDateTime(t0);
+                else entradaTarde = formatDateTime(t0);
             }
             if (times.length > 1) {
                 const t1 = times[times.length - 1];
-                const timeDec1 = t1.getUTCHours() + t1.getUTCMinutes() / 60;
-                if (timeDec1 < 12.5) salidaMañana = t1.toISOString();
-                else salidaTarde = t1.toISOString();
+                const timeDec1 = t1.getHours() + t1.getMinutes() / 60;
+                if (timeDec1 < 12.5) salidaMañana = formatDateTime(t1);
+                else salidaTarde = formatDateTime(t1);
             }
         } else {
             // Orden inverso: Salida primero (ej. turno nocturno / salida matutina), Entrada después
             if (times.length === 1) {
-                // Si solo hay 1 marca y es de salida primero, ESA marca es la salida. La entrada queda null (faltante).
                 const t0 = times[0];
-                const timeDec0 = t0.getUTCHours() + t0.getUTCMinutes() / 60;
-                if (timeDec0 < 12.5) salidaMañana = t0.toISOString();
-                else salidaTarde = t0.toISOString();
+                const timeDec0 = t0.getHours() + t0.getMinutes() / 60;
+                if (timeDec0 < 12.5) salidaMañana = formatDateTime(t0);
+                else salidaTarde = formatDateTime(t0);
             } else if (times.length > 1) {
-                // Primera marca = Salida, Segunda marca = Entrada
                 const t0 = times[0];
-                const timeDec0 = t0.getUTCHours() + t0.getUTCMinutes() / 60;
-                if (timeDec0 < 12.5) salidaMañana = t0.toISOString();
-                else salidaTarde = t0.toISOString();
+                const timeDec0 = t0.getHours() + t0.getMinutes() / 60;
+                if (timeDec0 < 12.5) salidaMañana = formatDateTime(t0);
+                else salidaTarde = formatDateTime(t0);
 
                 const t1 = times[1];
-                const timeDec1 = t1.getUTCHours() + t1.getUTCMinutes() / 60;
-                if (timeDec1 < 12.5) entradaMañana = t1.toISOString();
-                else salidaTarde = t1.toISOString();
+                const timeDec1 = t1.getHours() + t1.getMinutes() / 60;
+                if (timeDec1 < 12.5) entradaMañana = formatDateTime(t1);
+                else salidaTarde = formatDateTime(t1);
             }
         }
     }
@@ -106,6 +116,7 @@ function classifyPunches(times, turno, ruleFirstMarkDir, numMarcas = 2) {
 module.exports = {
     parseToDate,
     formatDateKey,
+    formatDateTime,
     filterDuplicatePunches,
     classifyPunches,
 };

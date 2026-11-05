@@ -49,15 +49,15 @@ function uploadAttendance(req, res) {
         const d = attendanceService.parseToDate(rawDate, XLSX);
         if (!no || !d) continue;
 
-        const timestampIso = d.toISOString();
+        const timestampStr = attendanceService.formatDateTime(d);
 
         insertOrIgnoreWorker.run(no, nombre, defaultTurnoName);
         updateWorkerName.run(nombre, no);
 
-        const existing = checkExistingAttendance.get(no, timestampIso, locationId, verification);
+        const existing = checkExistingAttendance.get(no, timestampStr, locationId, verification);
 
         if (!existing) {
-          insertAttendance.run(no, timestampIso, locationId, verification);
+          insertAttendance.run(no, timestampStr, locationId, verification);
           newRecordsCount++;
         } else {
           duplicateRecordsCount++;
