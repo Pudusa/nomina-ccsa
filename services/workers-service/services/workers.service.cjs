@@ -1,15 +1,5 @@
 const db = require('../database.cjs');
-const Database = require('better-sqlite3');
 const path = require('path');
-
-function getNominaDb() {
-  const dbPath = process.env.DB_PATH || path.join(__dirname, '../workers.sqlite');
-  const nominaPath = path.join(path.dirname(dbPath), 'nomina.db');
-  if (require('fs').existsSync(nominaPath)) {
-    return new Database(nominaPath, { readonly: true });
-  }
-  return null;
-}
 
 function formatDateKey(date) {
   const yyyy = date.getFullYear();
@@ -42,7 +32,7 @@ function normalizeWorkerTurnos() {
     const workers = db.prepare('SELECT no, default_turno FROM workers').all();
     const updateStmt = db.prepare('UPDATE workers SET default_turno = ? WHERE no = ?');
     for (const w of workers) {
-      if (!w.default_turno) {
+      if (!w.default_turno || w.default_turno.trim() === '' || w.default_turno.trim().toLowerCase() === 'sin turno') {
         updateStmt.run('Sin turno', w.no);
       }
     }
@@ -67,11 +57,6 @@ function cleanupExpiredRules() {
       updateDefaultTurno.run(r.turno, r.worker_no);
       deleteRule.run(r.id);
     }
-
-    db.prepare(`
-      DELETE FROM shift_rules
-      WHERE type = 'parcial' AND end_date < ?
-    `).run(todayStr);
   } catch (err) {
     console.error('Error cleaning up expired rules:', err);
   }
@@ -98,7 +83,6 @@ function getTurnoOnDate(defaultTurno, rules, dateStr) {
 }
 
 module.exports = {
-  getNominaDb,
   formatDateKey,
   filterDuplicatePunches,
   getDefaultTemplateName,

@@ -1,5 +1,6 @@
-import type { DayConfig } from '../../types';
+import { VisualMonthPicker } from '../VisualMonthPicker';
 import { CustomDropdown } from '../CustomDropdown';
+import type { DayConfig } from '../../types';
 
 interface TurnosViewProps {
   selectedMonthYear: string;
@@ -55,14 +56,11 @@ export function TurnosView({
 
       <div className="controls-bar flex flex-wrap items-center justify-between gap-8 mb-6">
         <div className="flex flex-wrap items-center gap-8">
-          <div className="visual-date-picker w-[220px]">
-            <label htmlFor="month-select" className="vdp-label">📅 Mes:</label>
-            <input
-              id="month-select"
-              type="month"
+          <div className="w-[220px]">
+            <VisualMonthPicker
+              label="📅 Mes:"
               value={selectedMonthYear}
-              onChange={(e) => setSelectedMonthYear(e.target.value)}
-              className="w-full bg-white border-2 border-[#94a3b8] rounded-lg px-3 py-3 text-slate-900 text-sm font-semibold outline-none focus:border-green-600 transition-all truncate"
+              onChange={setSelectedMonthYear}
             />
           </div>
 

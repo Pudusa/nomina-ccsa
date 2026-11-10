@@ -11,8 +11,9 @@ if (!fs.existsSync(dbDir)) {
 }
 
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
 
 // Ensure users table exists for auth-service isolation
 db.exec(`

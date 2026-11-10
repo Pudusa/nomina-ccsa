@@ -17,6 +17,7 @@ interface TrabajadoresViewProps {
   setWorkerCurrentPage: (p: number | ((prev: number) => number)) => void;
   workerTotalPages: number;
   onEditWorker: (worker: UniqueWorker, currentTurno: string) => void;
+  onOpenCalendar: (worker: UniqueWorker) => void;
   onSort: (field: string) => void;
   sortField: string;
   sortDir: 'asc' | 'desc';
@@ -37,6 +38,7 @@ export function TrabajadoresView({
   setWorkerCurrentPage,
   workerTotalPages: _workerTotalPages,
   onEditWorker,
+  onOpenCalendar,
   onSort,
   sortField,
   sortDir,
@@ -177,20 +179,20 @@ export function TrabajadoresView({
                         <span className="badge-verif">{currentTurno}</span>
                       </td>
                       <td className="text-center">
-                        <div className="inline-flex items-center justify-center gap-3">
+                        <div className="inline-flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => onOpenCalendar(worker)}
+                            className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-sm text-center"
+                            title="Ver calendario mensual de asistencia"
+                          >
+                            📅 Calendario
+                          </button>
                           <button
                             onClick={() => onEditWorker(worker, currentTurno)}
-                            className="w-24 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
+                            className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
                             title="Configurar turnos y periodos"
                           >
                             ✏️ Editar
-                          </button>
-                          <button
-                            disabled
-                            className="w-24 py-1.5 bg-slate-200 text-slate-400 text-xs font-semibold rounded-xl cursor-not-allowed shadow-none text-center"
-                            title="Próximamente"
-                          >
-                            🗑️ Eliminar
                           </button>
                         </div>
                       </td>

@@ -2,39 +2,131 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 function getWorkersDb() {
-  const dbPath = process.env.DB_PATH || path.join(__dirname, '../attendance.sqlite');
-  const workersPath = path.join(path.dirname(dbPath), 'workers.sqlite');
-  if (require('fs').existsSync(workersPath)) {
-    return new Database(workersPath, { readonly: true });
-  }
-  const nominaPath = path.join(path.dirname(dbPath), 'nomina.db');
-  if (require('fs').existsSync(nominaPath)) {
-    return new Database(nominaPath, { readonly: true });
+  const possiblePaths = [
+    path.join(__dirname, '../../workers-service/workers.sqlite'),
+    path.join(__dirname, '../../../services/workers-service/workers.sqlite'),
+    path.join(__dirname, '../workers.sqlite'),
+    path.join(__dirname, '../../data/workers.sqlite'),
+    path.join(__dirname, '../../../data/workers.sqlite'),
+    path.join(__dirname, '../../data/nomina.db'),
+    path.join(__dirname, '../../../data/nomina.db')
+  ];
+  for (const p of possiblePaths) {
+    if (require('fs').existsSync(p)) {
+      try {
+        const db = new Database(p, { readonly: true });
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+        if (tables.includes('shift_rules') || tables.includes('workers')) {
+          return db;
+        }
+        db.close();
+      } catch (e) {}
+    }
   }
   return null;
 }
 
 function getNominaDb() {
-  const dbPath = process.env.DB_PATH || path.join(__dirname, '../attendance.sqlite');
-  const nominaPath = path.join(path.dirname(dbPath), 'nomina.db');
+  const nominaPath = process.env.NOMINA_DB_PATH || path.join(__dirname, '../../../data/nomina.db');
   if (require('fs').existsSync(nominaPath)) {
     return new Database(nominaPath, { readonly: true });
+  }
+  const altPath = path.join(__dirname, '../../data/nomina.db');
+  if (require('fs').existsSync(altPath)) {
+    return new Database(altPath, { readonly: true });
+  }
+  const localPath = path.join(__dirname, '../nomina.db');
+  if (require('fs').existsSync(localPath)) {
+    return new Database(localPath, { readonly: true });
   }
   return null;
 }
 
 function parseToDate(val, XLSX) {
+    const rec = parseAttendanceRecord(val, XLSX);
+    return rec ? rec.dateObj : null;
+}
+
+function parseAttendanceRecord(val, XLSX) {
     if (!val) return null;
-    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-    if (typeof val === 'number') {
-        const dateObj = XLSX.SSF.parse_date_code(val);
-        if (dateObj) {
-            // Usamos Date local, no UTC
-            return new Date(dateObj.y, dateObj.m - 1, dateObj.d, dateObj.H, dateObj.M, dateObj.S);
+    let y, m, d, H = 0, M = 0, S = 0;
+
+    if (val instanceof Date) {
+        if (isNaN(val.getTime())) return null;
+        y = val.getUTCFullYear();
+        m = val.getUTCMonth() + 1;
+        d = val.getUTCDate();
+        H = val.getUTCHours();
+        M = val.getUTCMinutes();
+        S = val.getUTCSeconds();
+    } else if (typeof val === 'number') {
+        const dateObj = XLSX ? XLSX.SSF.parse_date_code(val) : null;
+        if (!dateObj) return null;
+        y = dateObj.y;
+        m = dateObj.m;
+        d = dateObj.d;
+        H = dateObj.H || 0;
+        M = dateObj.M || 0;
+        S = dateObj.S || 0;
+    } else if (typeof val === 'string') {
+        const cleanVal = val.trim();
+        // Soporta YYYY-MM-DD o YYYY/MM/DD con hora opcional y AM/PM opcional
+        const matchISO = cleanVal.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\s*(AM|PM))?)?/i);
+        // Soporta DD/MM/YYYY o DD-MM-YYYY con hora opcional y AM/PM opcional
+        const matchDMY = cleanVal.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\s*(AM|PM))?)?/i);
+        
+        let ampm = null;
+        if (matchISO) {
+            let monthStr, dayStr, hourStr, minStr, secStr;
+            [, y, monthStr, dayStr, hourStr, minStr, secStr, ampm] = matchISO;
+            m = parseInt(monthStr, 10);
+            d = parseInt(dayStr, 10);
+            y = parseInt(y, 10);
+            H = hourStr ? parseInt(hourStr, 10) : 0;
+            M = minStr ? parseInt(minStr, 10) : 0;
+            S = secStr ? parseInt(secStr, 10) : 0;
+        } else if (matchDMY) {
+            let dayStr, monthStr, yearStr, hourStr, minStr, secStr;
+            [, dayStr, monthStr, yearStr, hourStr, minStr, secStr, ampm] = matchDMY;
+            d = parseInt(dayStr, 10);
+            m = parseInt(monthStr, 10);
+            y = yearStr.length === 2 ? parseInt('20' + yearStr, 10) : parseInt(yearStr, 10);
+            H = hourStr ? parseInt(hourStr, 10) : 0;
+            M = minStr ? parseInt(minStr, 10) : 0;
+            S = secStr ? parseInt(secStr, 10) : 0;
+        } else {
+            const parsed = new Date(val);
+            if (isNaN(parsed.getTime())) return null;
+            y = parsed.getFullYear();
+            m = parsed.getMonth() + 1;
+            d = parsed.getDate();
+            H = parsed.getHours();
+            M = parsed.getMinutes();
+            S = parsed.getSeconds();
         }
+
+        if (ampm) {
+            const up = ampm.toUpperCase();
+            if (up === 'PM' && H < 12) H += 12;
+            if (up === 'AM' && H === 12) H = 0;
+        }
+    } else {
+        return null;
     }
-    const parsed = new Date(val);
-    return isNaN(parsed.getTime()) ? null : parsed;
+
+    const year = String(y);
+    const month = String(m).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    const hours = String(H).padStart(2, '0');
+    const minutes = String(M).padStart(2, '0');
+    const seconds = String(S).padStart(2, '0');
+
+    const dateStr = `${year}-${month}-${day}`;
+    const timeStr = `${hours}:${minutes}:${seconds}`;
+    const timestampStr = `${dateStr} ${timeStr}`;
+    const dateObj = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10));
+
+    return { dateStr, timeStr, timestampStr, dateObj };
 }
 
 function formatDateKey(d) {
@@ -142,6 +234,7 @@ module.exports = {
     getWorkersDb,
     getNominaDb,
     parseToDate,
+    parseAttendanceRecord,
     formatDateKey,
     formatDateTime,
     filterDuplicatePunches,

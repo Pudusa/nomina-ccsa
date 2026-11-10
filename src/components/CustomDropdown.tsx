@@ -15,7 +15,20 @@ interface CustomDropdownProps {
 
 export function CustomDropdown({ label, value, options, onChange, width = 'w-[220px]' }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [alignRight, setAlignRight] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleToggle = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.left + 220 > window.innerWidth - 20) {
+        setAlignRight(true);
+      } else {
+        setAlignRight(false);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -34,7 +47,7 @@ export function CustomDropdown({ label, value, options, onChange, width = 'w-[22
       <label className="vdp-label">{label}</label>
       <div
         className="vdp-header-bar cursor-pointer select-none"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         title="Hacer clic para desplegar opciones"
       >
         <span className="vdp-selected-display text-slate-800 font-semibold text-base">
@@ -46,7 +59,7 @@ export function CustomDropdown({ label, value, options, onChange, width = 'w-[22
       </div>
 
       {isOpen && (
-        <div className="vdp-calendar-card w-full left-0 mt-1 p-2 max-h-60 overflow-y-auto">
+        <div className="vdp-calendar-card w-full mt-1 p-2 max-h-60 overflow-y-auto" style={alignRight ? { right: 0, left: 'auto' } : { left: 0, right: 'auto' }}>
           <div className="flex flex-col gap-1">
             {options.map((opt) => {
               const isSelected = opt.value === value;

@@ -9,8 +9,9 @@ if (!fs.existsSync(dbDir)) {
 }
 
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS shift_templates (
@@ -36,13 +37,41 @@ db.exec(`
     end_date TEXT
   );
 
-  CREATE INDEX IF NOT EXISTS idx_shift_monthly_dist ON shift_monthly_distributions(shift_id, year_month);
+  CREATE TABLE IF NOT EXISTS shift_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    worker_no TEXT NOT NULL,
+    shift_id INTEGER NOT NULL,
+    assignment_type TEXT CHECK(assignment_type IN ('permanent', 'temporary')) NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(shift_id) REFERENCES shift_templates(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS shift_audit_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    worker_no TEXT NOT NULL,
+    previous_shift_id INTEGER,
+    new_shift_id INTEGER NOT NULL,
+    assignment_type TEXT NOT NULL,
+    effective_start_date TEXT NOT NULL,
+    effective_end_date TEXT,
+    registered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reason TEXT,
+    performed_by TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_shift_assignments_worker_dates ON shift_assignments(worker_no, start_date, end_date);
+  CREATE INDEX IF NOT EXISTS idx_shift_audit_worker ON shift_audit_history(worker_no);
 `);
 
 // Auto-seed shifts from nomina.db if shift_templates table is empty
 const tCount = db.prepare('SELECT COUNT(*) as count FROM shift_templates').get();
 if (tCount.count === 0) {
-  const nominaDbPath = process.env.NOMINA_DB_PATH || path.join(dbDir, 'nomina.db');
+const nominaDbPath = process.env.NOMINA_DB_PATH || 
+    (fs.existsSync(path.join(dbDir, 'nomina.db')) ? path.join(dbDir, 'nomina.db') :
+     fs.existsSync(path.join(__dirname, '../../data/nomina.db')) ? path.join(__dirname, '../../data/nomina.db') :
+     path.join(__dirname, '../../../data/nomina.db'));
   if (fs.existsSync(nominaDbPath)) {
     try {
       const nominaDb = new Database(nominaDbPath, { readonly: true });

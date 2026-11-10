@@ -6,7 +6,7 @@ import {
     classifyPunches,
 } from '../services/attendance.service.cjs';
 
-describe('Attendance Service Unit Tests', () => {
+describe('Attendance Service Unit Tests (Microservice)', () => {
     describe('formatDateKey', () => {
         it('formats date correctly into YYYY-MM-DD', () => {
             const date = new Date(2026, 9, 29); // October 29, 2026

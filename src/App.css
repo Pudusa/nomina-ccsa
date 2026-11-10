@@ -871,8 +871,8 @@ body {
 .vdp-calendar-card {
   position: absolute;
   top: calc(100% + 4px);
-  right: 0;
-  left: auto;
+  left: 0;
+  right: auto;
   z-index: 1000;
   background: #ffffff;
   border: 2px solid #94a3b8;

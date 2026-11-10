@@ -8,5 +8,8 @@ const { authenticateToken, requireRole } = require('../middleware/auth.middlewar
 router.post('/upload', authenticateToken, requireRole(['admin']), upload.single('file'), attendanceController.uploadAttendance);
 router.get('/dates', authenticateToken, attendanceController.getDates);
 router.get('/attendance', authenticateToken, attendanceController.getAttendanceByDate);
+router.get('/attendance/range', authenticateToken, attendanceController.getAttendanceByRange);
+router.get('/incidents', authenticateToken, attendanceController.getIncidents);
+router.get('/attendance/incidents', authenticateToken, attendanceController.getIncidents);
 
 module.exports = router;

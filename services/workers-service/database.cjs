@@ -9,14 +9,16 @@ if (!fs.existsSync(dbDir)) {
 }
 
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS workers (
     no TEXT PRIMARY KEY,
     nombre TEXT,
-    default_turno TEXT
+    default_turno TEXT,
+    departamento TEXT DEFAULT 'General'
   );
 
   CREATE TABLE IF NOT EXISTS shift_rules (
@@ -32,10 +34,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_shift_rules_worker ON shift_rules(worker_no);
 `);
 
+try {
+  db.exec(`ALTER TABLE workers ADD COLUMN departamento TEXT DEFAULT 'General'`);
+} catch (e) {
+  // Column already exists
+}
+
 // Auto-seed workers and shift_rules from nomina.db if workers table is empty
 const workerCount = db.prepare('SELECT COUNT(*) as count FROM workers').get();
 if (workerCount.count === 0) {
-  const nominaDbPath = process.env.NOMINA_DB_PATH || path.join(dbDir, 'nomina.db');
+const nominaDbPath = process.env.NOMINA_DB_PATH || 
+    (fs.existsSync(path.join(dbDir, 'nomina.db')) ? path.join(dbDir, 'nomina.db') :
+     fs.existsSync(path.join(__dirname, '../../data/nomina.db')) ? path.join(__dirname, '../../data/nomina.db') :
+     path.join(__dirname, '../../../data/nomina.db'));
   if (fs.existsSync(nominaDbPath)) {
     try {
       const nominaDb = new Database(nominaDbPath, { readonly: true });
@@ -43,12 +54,12 @@ if (workerCount.count === 0) {
       const rules = nominaDb.prepare('SELECT * FROM shift_rules').all();
       nominaDb.close();
 
-      const insertWorker = db.prepare('INSERT OR REPLACE INTO workers (no, nombre, default_turno) VALUES (?, ?, ?)');
+      const insertWorker = db.prepare('INSERT OR REPLACE INTO workers (no, nombre, default_turno, departamento) VALUES (?, ?, ?, ?)');
       const insertRule = db.prepare('INSERT OR REPLACE INTO shift_rules (id, worker_no, type, turno, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)');
 
       const seedTx = db.transaction(() => {
         for (const w of workers) {
-          insertWorker.run(w.no, w.nombre, w.default_turno);
+          insertWorker.run(w.no, w.nombre, w.default_turno, w.departamento || 'General');
         }
         for (const r of rules) {
           insertRule.run(r.id, r.worker_no, r.type, r.turno, r.start_date, r.end_date);

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import './App.css';
 import type { WorkerDaySummary, UniqueWorker, DayConfig } from './types';
-import { getTodayDateString, getYesterdayDateString, getTurnoOnDate, WEEKDAY_NAMES } from './utils/dateUtils';
+import { getYesterdayDateString, getTurnoOnDate, WEEKDAY_NAMES } from './utils/dateUtils';
 import { apiFetch } from './utils/api';
 import { LoginModal } from './components/modals/LoginModal';
 import { AsistenciasView } from './components/views/AsistenciasView';
@@ -12,6 +12,7 @@ import { IncidenciasView } from './components/views/IncidenciasView';
 import { CreateShiftModal } from './components/modals/CreateShiftModal';
 import { EditDayModal } from './components/modals/EditDayModal';
 import { EditWorkerModal } from './components/modals/EditWorkerModal';
+import { WorkerCalendarModal } from './components/modals/WorkerCalendarModal';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
@@ -41,25 +42,10 @@ export default function App() {
 
   const [workerSearchTerm, setWorkerSearchTerm] = useState<string>('');
   const [selectedTurno, setSelectedTurno] = useState<string>('ALL');
-  const [selectedWorkerStatusFilter, setSelectedWorkerStatusFilter] = useState<string>('ALL');
   const [workerCurrentPage, setWorkerCurrentPage] = useState<number>(1);
 
-  // Estado para el mes de trabajadores (si hoy es día 1, mostrar mes anterior; si no, mes actual)
-  const [workerMonthYear, setWorkerMonthYear] = useState<string>(() => {
-    const d = new Date();
-    if (d.getDate() === 1) {
-      d.setMonth(d.getMonth() - 1);
-    }
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
-  });
-
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(() => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
+    return getYesterdayDateString().substring(0, 7);
   });
   const [selectedShiftTemplate, setSelectedShiftTemplate] = useState<string>('');
   const [shiftTemplates, setShiftTemplates] = useState<Record<string, DayConfig[]>>({});
@@ -73,6 +59,7 @@ export default function App() {
   const [modalNumMarcas, setModalNumMarcas] = useState<number>(2);
 
   const [editingWorker, setEditingWorker] = useState<UniqueWorker | null>(null);
+  const [calendarModalWorker, setCalendarModalWorker] = useState<UniqueWorker | null>(null);
   const [newTurnoValue, setNewTurnoValue] = useState<string>('Matutino');
   const [editType, setEditType] = useState<'total' | 'parcial'>('total');
   const [ruleStartDate, setRuleStartDate] = useState<string>('');
@@ -84,7 +71,7 @@ export default function App() {
 
   const fetchShiftTemplates = async (ym?: string) => {
     try {
-      const targetYm = ym || selectedMonthYear || getTodayDateString().substring(0, 7);
+      const targetYm = ym || selectedMonthYear || getYesterdayDateString().substring(0, 7);
       const res = await apiFetch(`/api/shift-templates?year_month=${targetYm}`);
       const data = await res.json();
       setShiftTemplates(data);
@@ -110,20 +97,13 @@ export default function App() {
 
       if (dates.length > 0) {
         setAvailableDates(dates);
-        let defaultDate = dates[dates.length - 1];
         const yesterday = getYesterdayDateString();
-        if (dates.includes(yesterday)) {
-          defaultDate = yesterday;
-        } else {
-          const validDates = dates.filter(d => d <= yesterday);
-          if (validDates.length > 0) {
-            defaultDate = validDates[validDates.length - 1];
-          }
-        }
-        const targetDate = dateToSelect || selectedDate || defaultDate;
+        const targetDate = dateToSelect || selectedDate || yesterday;
         setSelectedDate(targetDate);
-        const ym = targetDate.substring(0, 7);
-        setSelectedMonthYear(ym);
+
+        if (dateToSelect) {
+          setSelectedMonthYear(targetDate.substring(0, 7));
+        }
 
         const workersRes = await apiFetch('/api/workers');
         const workers = await workersRes.json();
@@ -133,7 +113,7 @@ export default function App() {
         const attendance = await attRes.json();
         setWorkerSummaries(attendance);
 
-        await fetchShiftTemplates(ym);
+        await fetchShiftTemplates(selectedMonthYear);
 
         setIsDataLoaded(true);
       } else {
@@ -152,9 +132,15 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedDate || !isDataLoaded || !isAuthenticated) return;
-    apiFetch(`/api/attendance?date=${selectedDate}`)
-      .then((res) => res.json())
-      .then((data) => setWorkerSummaries(data))
+    const dateMonth = selectedDate.substring(0, 7);
+    Promise.all([
+      apiFetch(`/api/attendance?date=${selectedDate}`).then((res) => res.json()),
+      apiFetch(`/api/shift-templates?year_month=${dateMonth}`).then((res) => res.json())
+    ])
+      .then(([attendanceData, templatesData]) => {
+        setWorkerSummaries(attendanceData);
+        setShiftTemplates(templatesData);
+      })
       .catch((err) => console.error(err));
   }, [selectedDate, isDataLoaded, isAuthenticated]);
 
@@ -204,6 +190,7 @@ export default function App() {
       if (!res.ok) throw new Error(data.error || 'Error al subir el archivo');
 
       await refreshData();
+      window.dispatchEvent(new CustomEvent('nomina:attendance-uploaded'));
       setLoading(false);
     } catch (err: any) {
       setError(err.message);
@@ -232,9 +219,13 @@ export default function App() {
       const turno = w.turno;
       const template = shiftTemplates[turno];
       let isRest = false;
-      if (template && template[dayIndex]) {
-        const hours = template[dayIndex].hours;
-        isRest = hours === 'P' || hours === 'p' || hours === 0 || hours === '0' || hours === '0.00';
+      const isSinTurno = !turno || (turno || '').trim() === '' || (turno || '').trim().toLowerCase() === 'sin turno';
+      if (isSinTurno) {
+        isRest = true;
+      } else if (template && template[dayIndex]) {
+        const hoursVal = template[dayIndex].hours;
+        const hStr = String(hoursVal || '').trim().toLowerCase();
+        isRest = hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '';
       }
       return { ...w, isRest };
     });
@@ -676,8 +667,6 @@ export default function App() {
             setWorkerSearchTerm={setWorkerSearchTerm}
             selectedTurno={selectedTurno}
             setSelectedTurno={setSelectedTurno}
-            selectedWorkerStatusFilter={selectedWorkerStatusFilter}
-            setSelectedWorkerStatusFilter={setSelectedWorkerStatusFilter}
             selectedDate={selectedDate}
             availableTurnos={availableTurnos}
             workerCurrentPage={workerCurrentPage}
@@ -686,18 +675,17 @@ export default function App() {
             onSort={handleWorkerSort}
             sortField={workerSortField}
             sortDir={workerSortDir}
-            workerMonthYear={workerMonthYear}
-            setWorkerMonthYear={setWorkerMonthYear}
             shiftTemplates={shiftTemplates}
+            onOpenCalendar={(worker) => setCalendarModalWorker(worker)}
             onEditWorker={(worker, currentTurno) => {
               setEditingWorker(worker);
               const templateKeys = Object.keys(shiftTemplates);
               const defaultModalTurno = templateKeys.includes(currentTurno) ? currentTurno : (templateKeys[0] || 'Matutino');
               setNewTurnoValue(defaultModalTurno);
               setEditType('total');
-              const todayStr = getTodayDateString();
-              setRuleStartDate(todayStr);
-              setRuleEndDate(todayStr);
+              const yesterdayStr = getYesterdayDateString();
+              setRuleStartDate(yesterdayStr);
+              setRuleEndDate(yesterdayStr);
             }}
           />
         )}
@@ -764,6 +752,15 @@ export default function App() {
         onSave={handleSaveTurnoRule}
         onDeleteRule={handleDeleteRule}
       />
+
+      {calendarModalWorker && (
+        <WorkerCalendarModal
+          worker={calendarModalWorker}
+          monthYear={selectedMonthYear || getYesterdayDateString().substring(0, 7)}
+          onClose={() => setCalendarModalWorker(null)}
+          shiftTemplates={shiftTemplates}
+        />
+      )}
 
       {!isAuthenticated && (
         <LoginModal

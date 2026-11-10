@@ -1,4 +1,6 @@
-const authService = require('../services/auth.service.cjs');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'nomina_ccsa_secure_secret_key_2026';
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -8,13 +10,13 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Acceso no autorizado. Token JWT requerido.' });
   }
 
-  const decoded = authService.verifyToken(token);
-  if (!decoded) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
     return res.status(403).json({ error: 'Token inválido o expirado.' });
   }
-
-  req.user = decoded;
-  next();
 }
 
 function requireRole(roles) {
@@ -22,7 +24,10 @@ function requireRole(roles) {
     if (!req.user) {
       return res.status(401).json({ error: 'Usuario no autenticado.' });
     }
-    if (!roles.includes(req.user.role)) {
+    const userRole = req.user.role;
+    const userRoles = req.user.roles || [userRole];
+    const hasRole = roles.some(r => userRoles.includes(r));
+    if (!hasRole) {
       return res.status(403).json({ error: 'No tienes permisos suficientes para realizar esta acción.' });
     }
     next();

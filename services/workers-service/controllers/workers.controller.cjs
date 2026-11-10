@@ -1,5 +1,63 @@
 const db = require('../database.cjs');
 const workersService = require('../services/workers.service.cjs');
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
+
+function loadShiftTemplates(monthYear) {
+  const shiftsDbPath = fs.existsSync(path.join(__dirname, '../../../data/shifts.sqlite'))
+    ? path.join(__dirname, '../../../data/shifts.sqlite')
+    : (fs.existsSync(path.join(__dirname, '../../shifts-service/shifts.sqlite'))
+      ? path.join(__dirname, '../../shifts-service/shifts.sqlite')
+      : path.join(process.cwd(), 'data/shifts.sqlite'));
+
+  const shiftTemplates = {};
+  if (fs.existsSync(shiftsDbPath)) {
+    const shiftsDb = new Database(shiftsDbPath, { readonly: true });
+    try {
+      const templates = shiftsDb.prepare('SELECT * FROM shift_templates').all();
+      templates.forEach(t => {
+        const dist = shiftsDb.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ?').get(t.id, monthYear) ||
+                     shiftsDb.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ?').get(t.id, 'BASE');
+        if (dist && dist.days_json) {
+          const parsed = JSON.parse(dist.days_json);
+          shiftTemplates[t.name] = parsed.map((item, idx) => ({
+            dayIndex: Array.isArray(item) ? item[2] : idx,
+            hours: Array.isArray(item) ? item[0] : (item.hours !== undefined ? item.hours : '8'),
+            numMarcas: Array.isArray(item) ? item[3] : (item.numMarcas !== undefined ? item.numMarcas : 2)
+          }));
+        }
+      });
+    } catch (e) {
+      console.error('Error loading shift templates directly:', e);
+    } finally {
+      shiftsDb.close();
+    }
+  }
+  return shiftTemplates;
+}
+
+function loadAttendanceRange(minDate, nextMaxDate) {
+  const attDbPath = fs.existsSync(path.join(__dirname, '../../../data/attendance.sqlite'))
+    ? path.join(__dirname, '../../../data/attendance.sqlite')
+    : (fs.existsSync(path.join(__dirname, '../../attendance-service/attendance.sqlite'))
+      ? path.join(__dirname, '../../attendance-service/attendance.sqlite')
+      : path.join(process.cwd(), 'data/attendance.sqlite'));
+
+  const allAttendance = [];
+  if (fs.existsSync(attDbPath)) {
+    const attDb = new Database(attDbPath, { readonly: true });
+    try {
+      const records = attDb.prepare('SELECT * FROM attendance WHERE timestamp >= ? AND timestamp < ?').all(minDate, nextMaxDate);
+      allAttendance.push(...records);
+    } catch (e) {
+      console.error('Error loading attendance directly:', e);
+    } finally {
+      attDb.close();
+    }
+  }
+  return allAttendance;
+}
 
 function getWorkers(req, res) {
   try {
@@ -20,6 +78,7 @@ function getWorkers(req, res) {
       no: w.no,
       nombre: w.nombre,
       defaultTurno: w.default_turno || defaultFallback,
+      departamento: w.departamento || 'General',
       rules: rulesMap[w.no] || [],
     }));
 
@@ -29,7 +88,7 @@ function getWorkers(req, res) {
   }
 }
 
-function getWorkersStats(req, res) {
+async function getWorkersStats(req, res) {
   try {
     const { monthYear, period } = req.query;
     if (!monthYear) {
@@ -82,40 +141,24 @@ function getWorkersStats(req, res) {
     });
 
     const defaultFallback = workersService.getDefaultTemplateName();
-    const nominaDb = workersService.getNominaDb();
-    
-    // Pre-fetch everything from nominaDb if available
-    const templatesMap = {};
-    const distMap = {};
+
+    const shiftTemplates = loadShiftTemplates(monthYear);
+
+    // Fetch attendance from attendance-service
+    const nextMaxDateObj = new Date(maxDate + 'T00:00:00');
+    nextMaxDateObj.setDate(nextMaxDateObj.getDate() + 1);
+    const nextMaxDate = nextMaxDateObj.toISOString().split('T')[0];
+
+    const allAttendance = loadAttendanceRange(minDate, nextMaxDate);
+
     const attendanceMap = {};
-
-    if (nominaDb) {
-      const templates = nominaDb.prepare('SELECT id, name FROM shift_templates').all();
-      templates.forEach(t => { templatesMap[t.name] = t.id; });
-
-      const distributions = nominaDb.prepare("SELECT shift_id, year_month, days_json FROM shift_monthly_distributions WHERE year_month = ? OR year_month = 'BASE'").all(monthYear);
-      distributions.forEach(d => {
-        if (!distMap[d.shift_id]) distMap[d.shift_id] = {};
-        try {
-          distMap[d.shift_id][d.year_month] = JSON.parse(d.days_json);
-        } catch (e) {
-          distMap[d.shift_id][d.year_month] = [];
-        }
-      });
-
-      const nextMaxDateObj = new Date(maxDate + 'T00:00:00');
-      nextMaxDateObj.setDate(nextMaxDateObj.getDate() + 1);
-      const nextMaxDate = nextMaxDateObj.toISOString().split('T')[0];
-
-      const allAttendance = nominaDb.prepare('SELECT worker_no, timestamp FROM attendance WHERE timestamp >= ? AND timestamp < ?').all(minDate, nextMaxDate);
-      allAttendance.forEach(att => {
-        const dStr = att.timestamp.split(' ')[0];
-        const sNo = String(att.worker_no);
-        if (!attendanceMap[sNo]) attendanceMap[sNo] = {};
-        if (!attendanceMap[sNo][dStr]) attendanceMap[sNo][dStr] = [];
-        attendanceMap[sNo][dStr].push(new Date(att.timestamp));
-      });
-    }
+    allAttendance.forEach(att => {
+      const dStr = att.timestamp.split(' ')[0];
+      const sNo = String(att.worker_no);
+      if (!attendanceMap[sNo]) attendanceMap[sNo] = {};
+      if (!attendanceMap[sNo][dStr]) attendanceMap[sNo][dStr] = [];
+      attendanceMap[sNo][dStr].push(new Date(att.timestamp));
+    });
 
     const statsMap = {};
 
@@ -135,22 +178,33 @@ function getWorkersStats(req, res) {
         let hoursVal = '8';
         let expectedNumMarcas = 2;
 
-        const templateId = templatesMap[turno];
-        if (templateId) {
-          const workerDist = distMap[templateId] || {};
-          const daysArr = workerDist[monthYear] || workerDist['BASE'];
-          if (daysArr) {
-            const dayItem = daysArr.find(item => (Array.isArray(item) ? item[2] === dayIndex : item.dayIndex === dayIndex));
-            if (dayItem) {
-              const h = Array.isArray(dayItem) ? dayItem[0] : dayItem.hours;
-              if (h !== undefined) hoursVal = String(h);
-              const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
-              if (numMarks !== undefined) expectedNumMarcas = Number(numMarks) || 2;
-            }
-          }
+        const daysArr = shiftTemplates[turno];
+        if (daysArr && daysArr[dayIndex]) {
+          const dayItem = daysArr[dayIndex];
+          hoursVal = String(dayItem.hours !== undefined ? dayItem.hours : '8');
+          expectedNumMarcas = dayItem.numMarcas !== undefined ? Number(dayItem.numMarcas) : 2;
         }
 
-        const isRestDay = hoursVal === 'P' || hoursVal === 'p' || hoursVal === '0' || hoursVal === '0.00' || hoursVal === '';
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
+      const isSunday = (dayOfWeek === 0);
+      const isSaturday = (dayOfWeek === 6);
+
+      const turnoLower = (turno || '').trim().toLowerCase();
+      const isTurnoRest = turnoLower.includes('descanso') || 
+                          turnoLower.includes('libre') || 
+                          turnoLower.includes('domingo') || 
+                          turnoLower.includes('festivo') || 
+                          turnoLower.includes('feriado') || 
+                          turnoLower.includes('vacaciones') || 
+                          turnoLower.includes('incapacidad') || 
+                          turnoLower.includes('permiso') ||
+                          turnoLower === 'd' || 
+                          turnoLower === 'p' || 
+                          turnoLower === '0';
+      const isSinTurno = !turno || turnoLower === '' || turnoLower === 'sin turno';
+      const hStr = String(hoursVal || '').trim().toLowerCase();
+      const isRestDay = isSinTurno || isTurnoRest || isSunday || (isSaturday && (hStr === '8' || hStr === '' || hStr === '0')) || hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '' || expectedNumMarcas === 0;
         if (isRestDay) continue;
 
         const times = workerAttendance[dateStr] || [];
@@ -159,13 +213,14 @@ function getWorkersStats(req, res) {
         if (validTimes.length === 0) {
           absences++;
         } else if (validTimes.length === 1) {
-          singleMarks++;
+          if (expectedNumMarcas === 2) {
+            singleMarks++;
+          }
         }
       }
       statsMap[worker.nombre] = { singleMarks, absences };
     }
 
-    if (nominaDb) nominaDb.close();
     res.json(statsMap);
   } catch (err) {
     console.error('Error in /api/workers/stats:', err);
@@ -173,7 +228,7 @@ function getWorkersStats(req, res) {
   }
 }
 
-function getWorkerCalendar(req, res) {
+async function getWorkerCalendar(req, res) {
   try {
     const { workerNo, monthYear } = req.query;
     if (!workerNo || !monthYear) {
@@ -202,41 +257,25 @@ function getWorkerCalendar(req, res) {
     const defaultFallback = workersService.getDefaultTemplateName();
     const defaultTurno = worker.default_turno || defaultFallback;
 
-    const nominaDb = workersService.getNominaDb();
-    
-    // Pre-fetch
-    const templatesMap = {};
-    const distMap = {};
+    const shiftTemplates = loadShiftTemplates(monthYear);
+
+    const minDate = `${monthYear}-01`;
+    const maxDate = `${monthYear}-${String(daysInMonth).padStart(2, '0')}`;
+    const nextMaxDateObj = new Date(maxDate + 'T00:00:00');
+    nextMaxDateObj.setDate(nextMaxDateObj.getDate() + 1);
+    const nextMaxDate = nextMaxDateObj.toISOString().split('T')[0];
+
+    // Fetch attendance from attendance-service
+    const allAttendance = loadAttendanceRange(minDate, nextMaxDate);
+
     const attendanceByDate = {};
-
-    if (nominaDb) {
-      const templates = nominaDb.prepare('SELECT id, name FROM shift_templates').all();
-      templates.forEach(t => { templatesMap[t.name] = t.id; });
-
-      const distributions = nominaDb.prepare("SELECT shift_id, year_month, days_json FROM shift_monthly_distributions WHERE year_month = ? OR year_month = 'BASE'").all(monthYear);
-      distributions.forEach(d => {
-        const sShiftId = String(d.shift_id);
-        if (!distMap[sShiftId]) distMap[sShiftId] = {};
-        try {
-          distMap[sShiftId][d.year_month] = JSON.parse(d.days_json);
-        } catch (e) {
-          distMap[sShiftId][d.year_month] = [];
-        }
-      });
-
-      const minDate = `${monthYear}-01`;
-      const maxDate = `${monthYear}-${String(daysInMonth).padStart(2, '0')}`;
-      const nextMaxDateObj = new Date(maxDate + 'T00:00:00');
-      nextMaxDateObj.setDate(nextMaxDateObj.getDate() + 1);
-      const nextMaxDate = nextMaxDateObj.toISOString().split('T')[0];
-
-      const allAttendance = nominaDb.prepare('SELECT timestamp FROM attendance WHERE worker_no = ? AND timestamp >= ? AND timestamp < ?').all(String(workerNo), minDate, nextMaxDate);
-      allAttendance.forEach(att => {
+    allAttendance.forEach(att => {
+      if (String(att.worker_no) === String(workerNo)) {
         const dStr = att.timestamp.split(' ')[0];
         if (!attendanceByDate[dStr]) attendanceByDate[dStr] = [];
         attendanceByDate[dStr].push(new Date(att.timestamp));
-      });
-    }
+      }
+    });
 
     const statusMap = {};
 
@@ -249,41 +288,87 @@ function getWorkerCalendar(req, res) {
       let hoursVal = '8';
       let expectedNumMarcas = 2;
 
-      const templateId = templatesMap[turno];
-      if (templateId) {
-        const workerDist = distMap[templateId] || {};
-        const daysArr = workerDist[monthYear] || workerDist['BASE'];
-        if (daysArr) {
-          const dayItem = daysArr.find(item => (Array.isArray(item) ? item[2] === dayIndex : item.dayIndex === dayIndex));
-          if (dayItem) {
-            const h = Array.isArray(dayItem) ? dayItem[0] : dayItem.hours;
-            if (h !== undefined) hoursVal = String(h);
-            const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
-            if (numMarks !== undefined) expectedNumMarcas = Number(numMarks) || 2;
-          }
-        }
+      const daysArr = shiftTemplates[turno];
+      if (daysArr && daysArr[dayIndex]) {
+        const dayItem = daysArr[dayIndex];
+        hoursVal = String(dayItem.hours !== undefined ? dayItem.hours : '8');
+        expectedNumMarcas = dayItem.numMarcas !== undefined ? Number(dayItem.numMarcas) : 2;
       }
 
-      const isRestDay = hoursVal === 'P' || hoursVal === 'p' || hoursVal === '0' || hoursVal === '0.00' || hoursVal === '';
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
+      const isSunday = (dayOfWeek === 0);
+      const isSaturday = (dayOfWeek === 6);
 
-      if (dateStr > yesterdayStr || isRestDay) {
-        statusMap[dateStr] = 'gris';
-        continue;
-      }
+      const turnoLower = (turno || '').trim().toLowerCase();
+      const isTurnoRest = turnoLower.includes('descanso') || 
+                          turnoLower.includes('libre') || 
+                          turnoLower.includes('domingo') || 
+                          turnoLower.includes('festivo') || 
+                          turnoLower.includes('feriado') || 
+                          turnoLower.includes('vacaciones') || 
+                          turnoLower.includes('incapacidad') || 
+                          turnoLower.includes('permiso') ||
+                          turnoLower === 'd' || 
+                          turnoLower === 'p' || 
+                          turnoLower === '0';
+      const isSinTurno = !turno || turnoLower === '' || turnoLower === 'sin turno';
+      const hStr = String(hoursVal || '').trim().toLowerCase();
+      const isRestDay = isSinTurno || isTurnoRest || isSunday || (isSaturday && (hStr === '8' || hStr === '' || hStr === '0')) || hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '' || expectedNumMarcas === 0;
 
       const times = attendanceByDate[dateStr] || [];
       const validTimes = workersService.filterDuplicatePunches(times);
 
-      if (validTimes.length === 0) {
-        statusMap[dateStr] = 'rojo';
-      } else if (validTimes.length === 1) {
-        statusMap[dateStr] = 'amarillo';
-      } else {
-        statusMap[dateStr] = 'verde';
+      let formattedTimes = validTimes.map(t => {
+        const h = String(t.getHours()).padStart(2, '0');
+        const m = String(t.getMinutes()).padStart(2, '0');
+        return `${h}:${m}`;
+      });
+
+      let workedHours = 0;
+      if (validTimes.length >= 2) {
+        const diffMs = validTimes[validTimes.length - 1].getTime() - validTimes[0].getTime();
+        workedHours = Math.max(0, diffMs / (1000 * 60 * 60));
       }
+
+      const numExpected = parseFloat(hoursVal) || 8;
+      let overtimeHours = 0;
+      if (!isRestDay && workedHours > numExpected) {
+        overtimeHours = Math.round((workedHours - numExpected) * 10) / 10;
+      }
+
+      let status = 'gris';
+
+      if (dateStr > yesterdayStr) {
+        status = 'gris';
+      } else if (isRestDay) {
+        if (validTimes.length > 0) {
+          status = 'fuera_de_turno';
+        } else {
+          status = 'gris';
+        }
+      } else {
+        if (validTimes.length === 0) {
+          status = 'rojo';
+        } else if (validTimes.length === 1) {
+          status = (expectedNumMarcas === 1) ? 'verde' : 'amarillo';
+        } else if (validTimes.length >= 2 && expectedNumMarcas === 1) {
+          status = 'fuera_de_turno';
+        } else {
+          status = 'verde';
+        }
+      }
+
+      statusMap[dateStr] = {
+        status,
+        turno,
+        expectedHours: numExpected,
+        times: formattedTimes,
+        workedHours: Math.round(workedHours * 10) / 10,
+        overtimeHours
+      };
     }
 
-    if (nominaDb) nominaDb.close();
     res.json(statusMap);
   } catch (err) {
     console.error('Error in /api/workers/calendar:', err);
@@ -291,7 +376,7 @@ function getWorkerCalendar(req, res) {
   }
 }
 
-function getWorkersIncidents(req, res) {
+async function getWorkersIncidents(req, res) {
   try {
     const { monthYear } = req.query;
     if (!monthYear) {
@@ -334,38 +419,24 @@ function getWorkersIncidents(req, res) {
     });
 
     const defaultFallback = workersService.getDefaultTemplateName();
-    const nominaDb = workersService.getNominaDb();
-    
-    const templatesMap = {};
-    const distMap = {};
+
+    const shiftTemplates = loadShiftTemplates(monthYear);
+
+    const nextMaxDateObj = new Date(maxDate + 'T00:00:00');
+    nextMaxDateObj.setDate(nextMaxDateObj.getDate() + 1);
+    const nextMaxDate = nextMaxDateObj.toISOString().split('T')[0];
+
+    // Fetch attendance from attendance-service
+    const allAttendance = loadAttendanceRange(minDate, nextMaxDate);
+
     const attendanceMap = {};
-
-    if (nominaDb) {
-      const templates = nominaDb.prepare('SELECT id, name FROM shift_templates').all();
-      templates.forEach(t => { templatesMap[t.name] = t.id; });
-
-      const distributions = nominaDb.prepare("SELECT shift_id, year_month, days_json FROM shift_monthly_distributions WHERE year_month = ? OR year_month = 'BASE'").all(monthYear);
-      distributions.forEach(d => {
-        if (!distMap[d.shift_id]) distMap[d.shift_id] = {};
-        try {
-          distMap[d.shift_id][d.year_month] = JSON.parse(d.days_json);
-        } catch (e) {
-          distMap[d.shift_id][d.year_month] = [];
-        }
-      });
-
-      const nextMaxDateObj = new Date(maxDate + 'T00:00:00');
-      nextMaxDateObj.setDate(nextMaxDateObj.getDate() + 1);
-      const nextMaxDate = nextMaxDateObj.toISOString().split('T')[0];
-
-      const allAttendance = nominaDb.prepare('SELECT worker_no, timestamp FROM attendance WHERE timestamp >= ? AND timestamp < ?').all(minDate, nextMaxDate);
-      allAttendance.forEach(att => {
-        const dStr = att.timestamp.split(' ')[0];
-        if (!attendanceMap[att.worker_no]) attendanceMap[att.worker_no] = {};
-        if (!attendanceMap[att.worker_no][dStr]) attendanceMap[att.worker_no][dStr] = [];
-        attendanceMap[att.worker_no][dStr].push(new Date(att.timestamp));
-      });
-    }
+    allAttendance.forEach(att => {
+      const dStr = att.timestamp.split(' ')[0];
+      const sNo = String(att.worker_no);
+      if (!attendanceMap[sNo]) attendanceMap[sNo] = {};
+      if (!attendanceMap[sNo][dStr]) attendanceMap[sNo][dStr] = [];
+      attendanceMap[sNo][dStr].push(new Date(att.timestamp));
+    });
 
     const incidents = [];
 
@@ -382,46 +453,81 @@ function getWorkersIncidents(req, res) {
         let hoursVal = '8';
         let expectedNumMarcas = 2;
 
-        const templateId = templatesMap[turno];
-        if (templateId) {
-          const workerDist = distMap[templateId] || {};
-          const daysArr = workerDist[monthYear] || workerDist['BASE'];
-          if (daysArr) {
-            const dayItem = daysArr.find(item => (Array.isArray(item) ? item[2] === dayIndex : item.dayIndex === dayIndex));
-            if (dayItem) {
-              const h = Array.isArray(dayItem) ? dayItem[0] : dayItem.hours;
-              if (h !== undefined) hoursVal = String(h);
-              const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
-              if (numMarks !== undefined) expectedNumMarcas = Number(numMarks) || 2;
-            }
-          }
+        const daysArr = shiftTemplates[turno];
+        if (daysArr && daysArr[dayIndex]) {
+          const dayItem = daysArr[dayIndex];
+          hoursVal = String(dayItem.hours !== undefined ? dayItem.hours : '8');
+          expectedNumMarcas = dayItem.numMarcas !== undefined ? Number(dayItem.numMarcas) : 2;
         }
 
-        const isRestDay = hoursVal === 'P' || hoursVal === 'p' || hoursVal === '0' || hoursVal === '0.00' || hoursVal === '';
-        if (isRestDay) continue;
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
+      const isSunday = (dayOfWeek === 0);
+      const isSaturday = (dayOfWeek === 6);
+
+      const turnoLower = (turno || '').trim().toLowerCase();
+      const isTurnoRest = turnoLower.includes('descanso') || 
+                          turnoLower.includes('libre') || 
+                          turnoLower.includes('domingo') || 
+                          turnoLower.includes('festivo') || 
+                          turnoLower.includes('feriado') || 
+                          turnoLower.includes('vacaciones') || 
+                          turnoLower.includes('incapacidad') || 
+                          turnoLower.includes('permiso') ||
+                          turnoLower === 'd' || 
+                          turnoLower === 'p' || 
+                          turnoLower === '0';
+      const isSinTurno = !turno || turnoLower === '' || turnoLower === 'sin turno';
+      const hStr = String(hoursVal || '').trim().toLowerCase();
+      const isRestDay = isSinTurno || isTurnoRest || isSunday || (isSaturday && (hStr === '8' || hStr === '' || hStr === '0')) || hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '' || expectedNumMarcas === 0;
 
         const times = workerAttendance[dateStr] || [];
         const validTimes = workersService.filterDuplicatePunches(times);
 
-        if (validTimes.length === 0) {
-          incidents.push({
-            workerNo: worker.no,
-            workerNombre: worker.nombre,
-            date: dateStr,
-            type: 'Ausencia'
-          });
-        } else if (validTimes.length === 1) {
-          incidents.push({
-            workerNo: worker.no,
-            workerNombre: worker.nombre,
-            date: dateStr,
-            type: 'Una sola marca'
-          });
+        if (isRestDay) {
+          if (validTimes.length > 0) {
+            incidents.push({
+              workerNo: worker.no,
+              workerNombre: worker.nombre,
+              date: dateStr,
+              type: 'Fuera de turno'
+            });
+          }
+        } else {
+          if (validTimes.length === 0) {
+            incidents.push({
+              workerNo: worker.no,
+              workerNombre: worker.nombre,
+              date: dateStr,
+              type: 'Ausencia'
+            });
+          } else if (validTimes.length === 1) {
+            if (expectedNumMarcas === 2) {
+              const hour = validTimes[0].getHours();
+              // Antes de las 12pm se considera Entrada (mañana), por lo que falta la Salida.
+              // Después de las 12pm se considera Salida (tarde), por lo que falta la Entrada.
+              const falta = (hour < 12) ? 'Falta salida por marcar' : 'Falta entrada por marcar';
+              incidents.push({
+                workerNo: worker.no,
+                workerNombre: worker.nombre,
+                date: dateStr,
+                type: falta
+              });
+            }
+          } else if (validTimes.length === 2) {
+            if (expectedNumMarcas === 1) {
+              incidents.push({
+                workerNo: worker.no,
+                workerNombre: worker.nombre,
+                date: dateStr,
+                type: 'Fuera de turno'
+              });
+            }
+          }
         }
       }
     }
 
-    if (nominaDb) nominaDb.close();
     res.json(incidents);
   } catch (err) {
     console.error('Error in /api/workers/incidents:', err);
@@ -433,6 +539,8 @@ function addWorkerRule(req, res) {
   try {
     const { no } = req.params;
     const { type, turno, startDate, endDate } = req.body;
+
+    console.log(`[workers-service] Adding rule for worker ${no}:`, { type, turno, startDate, endDate });
 
     if (!type || !turno || !startDate) {
       return res.status(400).json({ error: 'Faltan datos requeridos (type, turno, startDate).' });
@@ -454,6 +562,7 @@ function addWorkerRule(req, res) {
     transaction();
     res.json({ message: 'Turno asignado con éxito.' });
   } catch (err) {
+    console.error('[workers-service] Error in addWorkerRule:', err);
     res.status(500).json({ error: err.message });
   }
 }

@@ -7,4 +7,7 @@ router.get('/shift-templates', authenticateToken, shiftsController.getShiftTempl
 router.post('/shift-templates', authenticateToken, requireRole(['admin']), shiftsController.saveShiftTemplate);
 router.delete('/shift-templates/:name', authenticateToken, requireRole(['admin']), shiftsController.deleteShiftTemplate);
 
+router.get('/assignments', authenticateToken, shiftsController.getShiftAssignments);
+router.post('/assignments', authenticateToken, requireRole(['admin']), shiftsController.assignShift);
+
 module.exports = router;

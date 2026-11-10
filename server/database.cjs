@@ -2,7 +2,10 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'nomina.db');
+const defaultDbPath = fs.existsSync(path.join(__dirname, '../data/nomina.db'))
+  ? path.join(__dirname, '../data/nomina.db')
+  : path.join(__dirname, 'nomina.db');
+const dbPath = process.env.DB_PATH || defaultDbPath;
 
 // Ensure directory exists
 const dbDir = path.dirname(dbPath);
@@ -24,8 +27,9 @@ if (!fs.existsSync(dbPath) || fs.statSync(dbPath).size < 8192) {
 }
 
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
 
 // Drop legacy unused tables if they exist from previous iterations
 db.exec(`
@@ -33,29 +37,15 @@ db.exec(`
   DROP TABLE IF EXISTS shift_monthly_overrides;
   DROP TABLE IF EXISTS shift_rules;
 
-  CREATE TABLE IF NOT EXISTS workers (
-    no TEXT PRIMARY KEY,
-    nombre TEXT,
-    default_turno TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS attendance (
+  DROP TABLE IF EXISTS attendance;
+  CREATE TABLE attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     worker_no TEXT,
+    date TEXT,
+    time TEXT,
     timestamp TEXT,
     location_id TEXT,
-    verification TEXT,
-    FOREIGN KEY(worker_no) REFERENCES workers(no)
-  );
-
-  CREATE TABLE IF NOT EXISTS shift_rules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    worker_no TEXT,
-    type TEXT,
-    turno TEXT,
-    start_date TEXT,
-    end_date TEXT,
-    FOREIGN KEY(worker_no) REFERENCES workers(no)
+    verification TEXT
   );
 
   CREATE TABLE IF NOT EXISTS shift_templates (
@@ -80,9 +70,8 @@ db.exec(`
   );
 
   -- Performance Indexes for high concurrency & fast joins
-  CREATE INDEX IF NOT EXISTS idx_attendance_worker_timestamp ON attendance(worker_no, timestamp);
-  CREATE INDEX IF NOT EXISTS idx_attendance_timestamp ON attendance(timestamp);
-  CREATE INDEX IF NOT EXISTS idx_shift_rules_worker ON shift_rules(worker_no);
+  CREATE INDEX IF NOT EXISTS idx_attendance_worker_date ON attendance(worker_no, date);
+  CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
   CREATE INDEX IF NOT EXISTS idx_shift_monthly_dist ON shift_monthly_distributions(shift_id, year_month);
 `);
 

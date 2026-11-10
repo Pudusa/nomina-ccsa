@@ -7,7 +7,20 @@ export function VisualDatePicker({ label, value, onChange, minDate, availableDat
   const [viewYear, setViewYear] = useState<number>(currentDate.getFullYear());
   const [viewMonth, setViewMonth] = useState<number>(currentDate.getMonth());
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [alignRight, setAlignRight] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleToggle = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.left + 320 > window.innerWidth - 20) {
+        setAlignRight(true);
+      } else {
+        setAlignRight(false);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     if (value) {
@@ -72,7 +85,7 @@ export function VisualDatePicker({ label, value, onChange, minDate, availableDat
       {label && <label className="vdp-label">{label}</label>}
       <div
         className="vdp-header-bar cursor-pointer select-none"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         title="Hacer clic para abrir/cerrar calendario"
       >
         <span className="vdp-selected-display">{formatDisplayDate(value || todayStr)}</span>
@@ -82,7 +95,7 @@ export function VisualDatePicker({ label, value, onChange, minDate, availableDat
       </div>
 
       {isOpen && (
-        <div className="vdp-calendar-card">
+        <div className="vdp-calendar-card" style={alignRight ? { right: 0, left: 'auto' } : { left: 0, right: 'auto' }}>
           <div className="vdp-cal-nav">
             <button type="button" onClick={handlePrevMonth} title="Mes anterior">◀</button>
             <span className="vdp-cal-title">{monthNames[viewMonth]} {viewYear}</span>

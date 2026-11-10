@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { UniqueWorker } from '../../types';
 import { apiFetch } from '../../utils/api';
+import { VisualMonthPicker } from '../VisualMonthPicker';
+
+interface DayInfo {
+  status: 'verde' | 'amarillo' | 'rojo' | 'gris' | 'fuera_de_turno';
+  turno: string;
+  expectedHours: number;
+  times: string[];
+  workedHours: number;
+  overtimeHours: number;
+}
 
 interface WorkerCalendarModalProps {
   worker: UniqueWorker;
@@ -10,14 +20,22 @@ interface WorkerCalendarModalProps {
 }
 
 export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalendarModalProps) {
-  const [dailyStatus, setDailyStatus] = useState<Record<string, 'verde' | 'amarillo' | 'rojo' | 'gris'>>({});
+  const [currentMonthYear, setCurrentMonthYear] = useState<string>(monthYear || new Date().toISOString().substring(0, 7));
+  const [dailyStatus, setDailyStatus] = useState<Record<string, DayInfo>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    if (monthYear) {
+      setCurrentMonthYear(monthYear);
+    }
+  }, [monthYear]);
+
+  useEffect(() => {
     const fetchCalendarData = async () => {
+      if (!worker || !currentMonthYear) return;
       setLoading(true);
       try {
-        const res = await apiFetch(`/api/workers/calendar?workerNo=${worker.no}&monthYear=${monthYear}`);
+        const res = await apiFetch(`/api/workers/calendar?workerNo=${worker.no}&monthYear=${currentMonthYear}`);
         const data = await res.json();
         setDailyStatus(data || {});
       } catch (e) {
@@ -29,11 +47,11 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
     };
 
     fetchCalendarData();
-  }, [worker, monthYear]);
+  }, [worker, currentMonthYear]);
 
-  const [yearStr, monthStr] = monthYear.split('-');
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
+  const [yearStr, monthStr] = (currentMonthYear || '2026-10').split('-');
+  const year = parseInt(yearStr, 10) || 2026;
+  const month = parseInt(monthStr, 10) || 10;
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDayOfWeek = new Date(year, month - 1, 1).getDay(); // 0 = Domingo
 
@@ -44,10 +62,10 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold">Calendario de Asistencia: {worker.nombre}</h2>
+            <h2 className="text-xl font-bold">Calendario Detallado de Asistencia: {worker.nombre}</h2>
             <p className="text-xs text-slate-300">No. {worker.no || 'N/A'} • {monthNames[month - 1]} {year}</p>
           </div>
           <button
@@ -59,22 +77,36 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
-          <div className="flex flex-wrap gap-4 mb-6 text-xs font-bold justify-center bg-slate-100 p-4 rounded-xl border border-slate-300 text-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-emerald-600 inline-block shadow-sm"></span>
-              <span className="text-slate-900 font-extrabold">Asistencia Completa (Verde)</span>
+          {/* Controls: Month Picker & Legend */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-slate-100 p-4 rounded-xl border border-slate-300">
+            <div className="w-[245px]">
+              <VisualMonthPicker
+                label="Cambiar Mes:"
+                value={currentMonthYear}
+                onChange={setCurrentMonthYear}
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-amber-500 inline-block shadow-sm"></span>
-              <span className="text-slate-900 font-extrabold">Una Sola Marca (Amarillo)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-rose-600 inline-block shadow-sm"></span>
-              <span className="text-slate-900 font-extrabold">Ausente (Rojo)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-slate-400 inline-block shadow-sm"></span>
-              <span className="text-slate-900 font-extrabold">Descanso / Futuro (Gris)</span>
+            <div className="flex flex-wrap gap-3 text-xs font-bold items-center text-slate-800">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-full bg-emerald-600 inline-block"></span>
+                <span>Presente (Vino)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-full bg-amber-500 inline-block"></span>
+                <span>1 Marca</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-full bg-rose-600 inline-block"></span>
+                <span>Ausente (Faltó)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-full bg-purple-600 inline-block"></span>
+                <span>Fuera Turno</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-full bg-slate-400 inline-block"></span>
+                <span>Libre / Futuro</span>
+              </div>
             </div>
           </div>
 
@@ -94,34 +126,56 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
 
               <div className="grid grid-cols-7 gap-2">
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-20 bg-slate-50 rounded-xl border border-dashed border-slate-200 opacity-40"></div>
+                  <div key={`empty-${i}`} className="h-24 bg-slate-50 rounded-xl border border-dashed border-slate-200 opacity-40"></div>
                 ))}
 
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const dayNum = i + 1;
                   const dStr = String(dayNum).padStart(2, '0');
-                  const dateStr = `${monthYear}-${dStr}`;
-                  const status = dailyStatus[dateStr] || 'gris';
+                  const dateStr = `${currentMonthYear}-${dStr}`;
+                  const dayInfo = dailyStatus[dateStr] || { status: 'gris', turno: '', expectedHours: 8, times: [], workedHours: 0, overtimeHours: 0 };
+                  const status = dayInfo.status;
 
                   let bgClass = 'bg-slate-100 text-slate-500 border-slate-200';
                   if (status === 'verde') bgClass = 'bg-emerald-500 text-white border-emerald-600 shadow-sm';
                   else if (status === 'amarillo') bgClass = 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm';
                   else if (status === 'rojo') bgClass = 'bg-rose-500 text-white border-rose-600 shadow-sm';
+                  else if (status === 'fuera_de_turno') bgClass = 'bg-purple-600 text-white border-purple-700 shadow-sm';
 
                   return (
                     <div
                       key={dateStr}
-                      className={`h-24 rounded-xl border p-2 flex flex-col justify-between transition transform hover:scale-[1.02] ${bgClass}`}
+                      className={`h-28 rounded-xl border p-2 flex flex-col justify-between transition transform hover:scale-[1.02] ${bgClass}`}
                     >
                       <div className="flex justify-between items-center text-xs font-bold">
                         <span>{dayNum}</span>
-                        <span className="text-[10px] opacity-80">{dStr}/{monthStr}</span>
+                        <span className="text-[10px] opacity-90">{dStr}/{monthStr}</span>
                       </div>
-                      <div className="text-center text-[11px] font-medium uppercase tracking-tight">
-                        {status === 'verde' && 'Presente'}
-                        {status === 'amarillo' && '1 Marca'}
-                        {status === 'rojo' && 'Ausente'}
-                        {status === 'gris' && 'Libre/Futuro'}
+
+                      <div className="text-center space-y-0.5">
+                        <div className="text-[11px] font-extrabold uppercase tracking-tight">
+                          {status === 'verde' && '✓ Presente'}
+                          {status === 'amarillo' && '⚠ 1 Marca'}
+                          {status === 'rojo' && '✗ Ausente'}
+                          {status === 'gris' && '• Libre'}
+                          {status === 'fuera_de_turno' && '⚡ Fuera Turno'}
+                        </div>
+
+                        {/* Punch times */}
+                        {dayInfo.times && dayInfo.times.length > 0 ? (
+                          <div className="text-[10px] font-mono opacity-95 bg-black/10 rounded px-1 py-0.5 truncate" title={dayInfo.times.join(' - ')}>
+                            {dayInfo.times.length === 1 ? dayInfo.times[0] : `${dayInfo.times[0]} → ${dayInfo.times[dayInfo.times.length - 1]}`}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] opacity-60 italic">Sin marcas</div>
+                        )}
+
+                        {/* Overtime */}
+                        {dayInfo.overtimeHours > 0 && (
+                          <div className="text-[10px] font-bold text-amber-200 bg-amber-900/40 rounded px-1">
+                            +{dayInfo.overtimeHours}h Extra
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

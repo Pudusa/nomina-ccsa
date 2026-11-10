@@ -77,18 +77,21 @@ export function AsistenciasView({
       <div className="controls-bar flex flex-wrap items-start gap-4 mb-6">
         <div className="visual-date-picker w-[260px] mb-0">
           <label className="vdp-label">
-            🔍 Buscar por Nombre o No.
+            Buscar por Nombre o No.
           </label>
-          <input
-            type="text"
-            placeholder="Buscar:"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full bg-white border-2 border-[#94a3b8] rounded-lg px-4 py-3 text-slate-900 text-sm font-semibold outline-none focus:border-green-600 placeholder:text-slate-400"
-          />
+          <div className="vdp-header-bar">
+            <input
+              type="text"
+              placeholder="Buscar:"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-transparent text-slate-800 font-semibold text-base outline-none placeholder:text-slate-400"
+            />
+            <span className="text-slate-400 text-sm ml-2">🔍</span>
+          </div>
         </div>
 
         <div className="w-[220px]">

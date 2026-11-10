@@ -17,7 +17,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 45s
     restart: unless-stopped
     networks:
       - nomina-network
@@ -41,7 +41,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 45s
     restart: unless-stopped
     networks:
       - nomina-network
@@ -65,7 +65,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 45s
     restart: unless-stopped
     networks:
       - nomina-network
@@ -89,7 +89,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 45s
     restart: unless-stopped
     networks:
       - nomina-network
@@ -116,7 +116,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 45s
     depends_on:
       auth-service:
         condition: service_healthy
