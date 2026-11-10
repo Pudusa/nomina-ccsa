@@ -470,7 +470,8 @@ function getIncidents(req, res) {
             }
             incidentsByWorker.get(workerNo).anomalias.push({
               id: anomalyIdCounter++,
-              tipo: 'Ausencia',
+              categoria: 'Ausencia',
+              tipo: 'Falta injustificada',
               fecha: date
             });
           } else if (filteredTimes.length === 1) {
@@ -479,11 +480,10 @@ function getIncidents(req, res) {
                 incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
               }
               const hour = filteredTimes[0].getHours();
-              // Antes de las 12pm se considera Entrada (mañana), por lo que falta la Salida.
-              // Después de las 12pm se considera Salida (tarde), por lo que falta la Entrada.
-              const falta = (hour < 12) ? 'Falta salida por marcar' : 'Falta entrada por marcar';
+              const falta = (hour < 12) ? 'Falta salida injustificada' : 'Falta entrada injustificada';
               incidentsByWorker.get(workerNo).anomalias.push({
                 id: anomalyIdCounter++,
+                categoria: 'Falta marca',
                 tipo: falta,
                 fecha: date
               });
@@ -495,6 +495,7 @@ function getIncidents(req, res) {
               }
               incidentsByWorker.get(workerNo).anomalias.push({
                 id: anomalyIdCounter++,
+                categoria: 'Fuera de turno',
                 tipo: 'Fuera de turno',
                 fecha: date
               });

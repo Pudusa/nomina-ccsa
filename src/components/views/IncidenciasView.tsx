@@ -7,8 +7,10 @@ import { apiFetch } from '../../utils/api';
 
 interface Anomalia {
   id: number;
+  categoria?: string;
   tipo: string;
   fecha: string;
+  descripcion?: string;
 }
 
 interface WorkerIncidents {
@@ -26,9 +28,107 @@ const formatDateToDDMMAAAA = (dateStr: string) => {
   return dateStr;
 };
 
+const getBadgeStyle = (tipo: string) => {
+  const t = tipo.toLowerCase();
+  if (t.includes('incapacidad')) return 'bg-rose-100 text-rose-800 border border-rose-300';
+  if (t.includes('permiso c/goce')) return 'bg-pink-100 text-pink-800 border border-pink-300';
+  if (t.includes('permiso s/goce')) return 'bg-rose-200 text-rose-900 border border-rose-400';
+  if (t.includes('injustificada')) return 'bg-red-200 text-red-900 border border-red-500';
+  if (t.includes('vacaciones')) return 'bg-cyan-100 text-cyan-800 border border-cyan-300';
+  if (t.includes('dietas')) return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+  if (t.includes('salida')) return 'bg-amber-100 text-amber-800 border border-amber-300';
+  if (t.includes('entrada')) return 'bg-amber-200 text-amber-900 border border-amber-400';
+  if (t.includes('biométrico') || t.includes('biometrico')) return 'bg-orange-100 text-orange-800 border border-orange-300';
+  if (t.includes('comisión') || t.includes('comision') || t.includes('campo')) return 'bg-purple-100 text-purple-800 border border-purple-300';
+  if (t.includes('cambio de turno')) return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+  if (t.includes('ausencia')) return 'bg-rose-100 text-rose-800 border border-rose-300';
+  if (t.includes('falta') || t.includes('marca')) return 'bg-amber-100 text-amber-800 border border-amber-300';
+  if (t.includes('fuera')) return 'bg-purple-100 text-purple-800 border border-purple-300';
+  return 'bg-slate-100 text-slate-800 border border-slate-300';
+};
+
+const getAnomaliaCategoria = (anom: Anomalia) => {
+  if (anom.categoria) return anom.categoria;
+  const t = anom.tipo.toLowerCase();
+  if (t.includes('fuera') || t.includes('turno') || t.includes('comisión') || t.includes('campo')) {
+    return 'Fuera de turno';
+  }
+  if (t.includes('olvido') || t.includes('biométrico') || t.includes('salida') || t.includes('entrada') || t.includes('falta salida') || t.includes('falta entrada')) {
+    return 'Falta marca';
+  }
+  return 'Ausencia';
+};
+
+const getMotivoOptionsForCategoria = (categoria: string) => {
+  if (categoria === 'Ausencia') {
+    return [
+      { label: 'Todos los motivos', value: 'ALL' },
+      { label: 'Falta injustificada', value: 'Falta injustificada' },
+      { label: 'Incapacidad', value: 'Incapacidad' },
+      { label: 'Permiso c/GOCE', value: 'Permiso c/GOCE' },
+      { label: 'Permiso s/GOCE', value: 'Permiso s/GOCE' },
+      { label: 'Vacaciones', value: 'Vacaciones' },
+      { label: 'Dietas', value: 'Dietas' }
+    ];
+  }
+  if (categoria === 'Falta marca') {
+    return [
+      { label: 'Todos los motivos', value: 'ALL' },
+      { label: 'Falta entrada injustificada', value: 'Falta entrada injustificada' },
+      { label: 'Falta salida injustificada', value: 'Falta salida injustificada' },
+      { label: 'Olvido de Entrada', value: 'Olvido de Entrada' },
+      { label: 'Olvido de Salida', value: 'Olvido de Salida' },
+      { label: 'Falla Biométrico', value: 'Falla Biométrico' }
+    ];
+  }
+  if (categoria === 'Fuera de turno') {
+    return [
+      { label: 'Todos los motivos', value: 'ALL' },
+      { label: 'Fuera de turno', value: 'Fuera de turno' },
+      { label: 'Comisión / Campo', value: 'Comisión / Campo' },
+      { label: 'Cambio de Turno', value: 'Cambio de Turno' }
+    ];
+  }
+  return [{ label: 'Todos los motivos', value: 'ALL' }];
+};
+
+const getJustificationOptionsForAnomalia = (anom: Anomalia) => {
+  const cat = getAnomaliaCategoria(anom);
+  if (cat === 'Ausencia') {
+    return [
+      { label: 'Falta injustificada', value: 'Falta injustificada' },
+      { label: 'Incapacidad', value: 'Incapacidad' },
+      { label: 'Permiso c/GOCE', value: 'Permiso c/GOCE' },
+      { label: 'Permiso s/GOCE', value: 'Permiso s/GOCE' },
+      { label: 'Vacaciones', value: 'Vacaciones' },
+      { label: 'Dietas', value: 'Dietas' }
+    ];
+  }
+  if (cat === 'Falta marca') {
+    return [
+      { label: 'Falta entrada injustificada', value: 'Falta entrada injustificada' },
+      { label: 'Falta salida injustificada', value: 'Falta salida injustificada' },
+      { label: 'Olvido de Entrada', value: 'Olvido de Entrada' },
+      { label: 'Olvido de Salida', value: 'Olvido de Salida' },
+      { label: 'Falla Biométrico', value: 'Falla Biométrico' }
+    ];
+  }
+  if (cat === 'Fuera de turno') {
+    return [
+      { label: 'Fuera de turno', value: 'Fuera de turno' },
+      { label: 'Comisión / Campo', value: 'Comisión / Campo' },
+      { label: 'Cambio de Turno', value: 'Cambio de Turno' }
+    ];
+  }
+  return [
+    { label: 'Falta injustificada', value: 'Falta injustificada' }
+  ];
+};
+
 export function IncidenciasView() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('ALL');
+  const [selectedCategoria, setSelectedCategoria] = useState('ALL');
+  const [selectedMotivo, setSelectedMotivo] = useState('ALL');
   const [dateMode, setDateMode] = useState<string>('mes');
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const today = getTodayDateString();
@@ -40,6 +140,15 @@ export function IncidenciasView() {
   const [loading, setLoading] = useState(false);
   const [incidentsData, setIncidentsData] = useState<WorkerIncidents[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Modal State for Justification
+  const [justifyingItem, setJustifyingItem] = useState<{
+    workerNo: string;
+    workerName: string;
+    anomalia: Anomalia;
+  } | null>(null);
+  const [newTipo, setNewTipo] = useState('Falta injustificada');
+  const [newDescripcion, setNewDescripcion] = useState('');
 
   const fetchIncidents = async () => {
     setLoading(true);
@@ -86,15 +195,21 @@ export function IncidenciasView() {
     };
   }, [selectedMonth, dateMode, dateFrom, dateTo]);
 
-  // Filtrado por búsqueda y tipo de anomalía
+  const handleCategoriaChange = (cat: string) => {
+    setSelectedCategoria(cat);
+    setSelectedMotivo('ALL');
+  };
+
+  // Filtrado por búsqueda, categoría y motivo
   const filteredWorkers = incidentsData.map((worker) => {
     const query = searchTerm.toLowerCase().trim();
     const matchesWorker = !query || worker.nombre.toLowerCase().includes(query) || worker.no.toLowerCase().includes(query);
     
     const filteredAnomalias = worker.anomalias.filter((anom) => {
-      const matchesType = selectedType === 'ALL' || 
-        (selectedType === 'marca' ? anom.tipo.toLowerCase().includes('falta') : anom.tipo.toLowerCase().includes(selectedType.toLowerCase()));
-      return matchesType;
+      const cat = getAnomaliaCategoria(anom);
+      if (selectedCategoria !== 'ALL' && cat !== selectedCategoria) return false;
+      if (selectedMotivo !== 'ALL' && !anom.tipo.toLowerCase().includes(selectedMotivo.toLowerCase())) return false;
+      return true;
     });
 
     return {
@@ -122,12 +237,12 @@ export function IncidenciasView() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedMonth, dateMode, dateFrom, dateTo, selectedType]);
+  }, [searchTerm, selectedMonth, dateMode, dateFrom, dateTo, selectedCategoria, selectedMotivo]);
 
   const totalAnomaliasCount = incidentsData.reduce((acc, w) => acc + w.anomalias.length, 0);
-  const totalAusencias = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => a.tipo === 'Ausencia').length, 0);
-  const totalIncompletas = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => a.tipo.includes('Falta')).length, 0);
-  const totalFueraDeTurno = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => a.tipo === 'Fuera de turno').length, 0);
+  const totalAusencias = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Ausencia').length, 0);
+  const totalIncompletas = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Falta marca').length, 0);
+  const totalFueraDeTurno = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Fuera de turno').length, 0);
 
   const dateModeOptions = [
     { label: 'Mes Completo', value: 'mes' },
@@ -136,43 +251,60 @@ export function IncidenciasView() {
     { label: 'Personalizada', value: 'personalizado' }
   ];
 
+  const handleOpenJustify = (workerNo: string, workerName: string, anom: Anomalia) => {
+    setJustifyingItem({ workerNo, workerName, anomalia: anom });
+    setNewTipo(anom.tipo || 'Falta injustificada');
+    setNewDescripcion(anom.descripcion || '');
+  };
+
+  const handleSaveJustification = () => {
+    if (!justifyingItem) return;
+    const { workerNo, anomalia } = justifyingItem;
+    
+    // Update local state
+    setIncidentsData(prev => prev.map(w => {
+      if (w.no !== workerNo) return w;
+      return {
+        ...w,
+        anomalias: w.anomalias.map(a => {
+          if (a.id !== anomalia.id) return a;
+          return { ...a, tipo: newTipo, descripcion: newDescripcion };
+        })
+      };
+    }));
+
+    setJustifyingItem(null);
+  };
+
+  const currentJustificationOptions = justifyingItem ? getJustificationOptionsForAnomalia(justifyingItem.anomalia) : [];
+
   return (
     <div className="space-y-6">
       {/* 1. Panel de Métricas de Anomalías */}
-      <div className="border-2 border-dashed border-sky-400 bg-sky-50/40 rounded-2xl p-4 relative">
-        <span className="absolute -top-3 left-4 bg-sky-600 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow">
-          📊 [Métricas de Anomalías y Asistencia Real]
-        </span>
-        <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-2">
-          <div className="metric-card bg-white border border-slate-200 rounded-xl p-5 text-center shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Anomalías</h3>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <p className="metric-title text-xs font-bold text-slate-500 uppercase tracking-wider">Total Incidencias</p>
             <p className="metric-value text-lg font-extrabold text-slate-900">{totalAnomaliasCount}</p>
           </div>
-          <div className="metric-card bg-white border border-slate-200 rounded-xl p-5 text-center shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Ausencias</h3>
-            <p className="metric-value text-lg font-extrabold text-rose-600">{totalAusencias}</p>
+          <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl">
+            <p className="metric-title text-xs font-bold text-rose-600 uppercase tracking-wider">Ausencias</p>
+            <p className="metric-value text-lg font-extrabold text-rose-900">{totalAusencias}</p>
           </div>
-          <div className="metric-card bg-white border border-slate-200 rounded-xl p-5 text-center shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Marcas Incompletas</h3>
-            <p className="metric-value text-lg font-extrabold text-amber-600">{totalIncompletas}</p>
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+            <p className="metric-title text-xs font-bold text-amber-600 uppercase tracking-wider">Faltas Marca</p>
+            <p className="metric-value text-lg font-extrabold text-amber-900">{totalIncompletas}</p>
           </div>
-          <div className="metric-card bg-white border border-slate-200 rounded-xl p-5 text-center shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fuera de Turno</h3>
-            <p className="metric-value text-lg font-extrabold text-purple-600">{totalFueraDeTurno}</p>
-          </div>
-          <div className="metric-card bg-white border border-slate-200 rounded-xl p-5 text-center shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Trabajadores Afectados</h3>
-            <p className="metric-value text-lg font-extrabold text-slate-700">{incidentsData.length}</p>
+          <div className="bg-purple-50 border border-purple-200 p-4 rounded-xl">
+            <p className="metric-title text-xs font-bold text-purple-600 uppercase tracking-wider">Fuera de Turno</p>
+            <p className="metric-value text-lg font-extrabold text-purple-900">{totalFueraDeTurno}</p>
           </div>
         </div>
       </div>
 
       {/* 2. Filtros y Búsqueda */}
-      <div className="border-2 border-dashed border-indigo-400 bg-indigo-50/30 rounded-2xl p-4 relative">
-        <span className="absolute -top-3 left-4 bg-indigo-600 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow">
-          🔍 [Filtros y Búsqueda de Trabajador]
-        </span>
-        <div className="controls-bar flex flex-wrap items-center gap-4 mt-2">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="controls-bar flex flex-wrap items-center gap-4">
           <div className="visual-date-picker w-[220px] mb-0">
             <label className="vdp-label">Buscar Trabajador:</label>
             <div className="vdp-header-bar">
@@ -187,17 +319,27 @@ export function IncidenciasView() {
             </div>
           </div>
 
-          <div className="w-[220px]">
+          <div className="w-[200px]">
             <CustomDropdown
-              label="Tipo de Anomalía:"
-              value={selectedType}
-              onChange={setSelectedType}
+              label="Tipo de Incidencia:"
+              value={selectedCategoria}
+              onChange={handleCategoriaChange}
               options={[
-                { label: 'Todas las anomalías', value: 'ALL' },
+                { label: 'Todas las incidencias', value: 'ALL' },
                 { label: 'Ausencia', value: 'Ausencia' },
-                { label: 'Marca incompleta', value: 'marca' },
+                { label: 'Falta marca', value: 'Falta marca' },
                 { label: 'Fuera de turno', value: 'Fuera de turno' }
               ]}
+              width="w-full"
+            />
+          </div>
+
+          <div className="w-[220px]">
+            <CustomDropdown
+              label="Motivo / Justificación:"
+              value={selectedMotivo}
+              onChange={setSelectedMotivo}
+              options={getMotivoOptionsForCategoria(selectedCategoria)}
               width="w-full"
             />
           </div>
@@ -243,12 +385,9 @@ export function IncidenciasView() {
         </div>
       </div>
 
-      {/* 3. Tabla Agrupada por Trabajador (NO., Nombre, Tipo de Incidencia, Fecha) */}
-      <div className="border-2 border-dashed border-emerald-400 bg-emerald-50/25 rounded-2xl p-4 relative">
-        <span className="absolute -top-3 left-4 bg-emerald-600 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow">
-          📋 [Tabla de Anomalías Agrupadas por Trabajador]
-        </span>
-        <div className="table-responsive mt-2 bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+      {/* 3. Tabla Agrupada por Trabajador */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200">
+        <div className="table-responsive">
           <table className="nomina-table asistencias-table w-full">
             <thead>
               <tr className="bg-slate-100 text-slate-700 text-left text-xs uppercase tracking-wider font-bold">
@@ -260,7 +399,7 @@ export function IncidenciasView() {
                   No. {sortOrder === 'asc' ? ' ▲' : ' ▼'}
                 </th>
                 <th className="p-3 w-40">Nombre</th>
-                <th className="p-3 w-1/2">Tipo de Incidencia</th>
+                <th className="p-3 w-1/2">Motivo / Incidencia (Click para justificar)</th>
                 <th className="p-3 w-1/3">Fecha</th>
               </tr>
             </thead>
@@ -292,11 +431,18 @@ export function IncidenciasView() {
                         </>
                       ) : null}
                       <td className="p-3">
-                        <span className={`px-2.5 py-1 rounded-full text-sm font-bold ${
-                          anom.tipo.includes('marca') ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
-                        }`}>
+                        <button
+                          onClick={() => handleOpenJustify(worker.no, worker.nombre, anom)}
+                          className={`inline-block text-center w-48 px-3 py-1 rounded-full text-sm font-bold shadow-sm cursor-pointer transition transform hover:scale-105 ${getBadgeStyle(anom.tipo)}`}
+                          title={anom.descripcion ? `📝 Nota: ${anom.descripcion}` : `Click para justificar / clasificar motivo (${anom.tipo})`}
+                        >
                           {anom.tipo}
-                        </span>
+                        </button>
+                        {anom.descripcion && (
+                          <span className="ml-2 text-xs text-slate-500 italic block mt-0.5">
+                            Nota: {anom.descripcion}
+                          </span>
+                        )}
                       </td>
                       <td className="p-3">
                         <span className="font-extrabold text-emerald-700">
@@ -313,14 +459,11 @@ export function IncidenciasView() {
       </div>
 
       {/* 4. Paginación y Pie */}
-      <div className="border-2 border-dashed border-amber-400 bg-amber-50/30 rounded-2xl p-3 relative flex items-center justify-between">
-        <span className="absolute -top-3 left-4 bg-amber-600 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow">
-          📄 [Paginación]
-        </span>
-        <div className="text-xs font-bold text-slate-600 mt-1">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+        <div className="text-xs font-bold text-slate-600">
           Mostrando {paginatedWorkers.length} de {sortedAndFilteredWorkers.length} trabajadores con anomalías detectadas
         </div>
-        <div className="pagination-bar flex items-center gap-2 mt-1">
+        <div className="pagination-bar flex items-center gap-2">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
             disabled={currentPage === 1}
@@ -340,6 +483,82 @@ export function IncidenciasView() {
           </button>
         </div>
       </div>
+
+      {/* Justification Modal */}
+      {justifyingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200">
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-base">Justificar / Clasificar Incidencia</h3>
+                <p className="text-xs text-slate-400">{justifyingItem.workerName} (No. {justifyingItem.workerNo})</p>
+              </div>
+              <button
+                onClick={() => setJustifyingItem(null)}
+                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Fecha y Tipo Original:
+                </label>
+                <p className="text-sm font-semibold text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                  {formatDateToDDMMAAAA(justifyingItem.anomalia.fecha)} — <span className="font-bold text-slate-900">{justifyingItem.anomalia.tipo}</span>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Motivo Permitido (Enlazado al tipo de incidencia):
+                </label>
+                <select
+                  value={newTipo}
+                  onChange={(e) => setNewTipo(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500"
+                >
+                  {currentJustificationOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Nota / Descripción Aclaratoria (Opcional):
+                </label>
+                <textarea
+                  value={newDescripcion}
+                  onChange={(e) => setNewDescripcion(e.target.value)}
+                  placeholder="Ej. Folio IMSS #12345, autorizado por Gerencia, etc."
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 resize-none placeholder:text-slate-400"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  onClick={() => setJustifyingItem(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold cursor-pointer transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveJustification}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/25 cursor-pointer transition"
+                >
+                  Guardar Justificación
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

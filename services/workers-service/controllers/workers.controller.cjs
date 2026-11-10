@@ -499,18 +499,18 @@ async function getWorkersIncidents(req, res) {
               workerNo: worker.no,
               workerNombre: worker.nombre,
               date: dateStr,
-              type: 'Ausencia'
+              categoria: 'Ausencia',
+              type: 'Falta injustificada'
             });
           } else if (validTimes.length === 1) {
             if (expectedNumMarcas === 2) {
               const hour = validTimes[0].getHours();
-              // Antes de las 12pm se considera Entrada (mañana), por lo que falta la Salida.
-              // Después de las 12pm se considera Salida (tarde), por lo que falta la Entrada.
-              const falta = (hour < 12) ? 'Falta salida por marcar' : 'Falta entrada por marcar';
+              const falta = (hour < 12) ? 'Falta salida injustificada' : 'Falta entrada injustificada';
               incidents.push({
                 workerNo: worker.no,
                 workerNombre: worker.nombre,
                 date: dateStr,
+                categoria: 'Falta marca',
                 type: falta
               });
             }
@@ -520,6 +520,7 @@ async function getWorkersIncidents(req, res) {
                 workerNo: worker.no,
                 workerNombre: worker.nombre,
                 date: dateStr,
+                categoria: 'Fuera de turno',
                 type: 'Fuera de turno'
               });
             }
