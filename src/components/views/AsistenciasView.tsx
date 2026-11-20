@@ -7,7 +7,6 @@ interface AsistenciasViewProps {
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   availableDates: string[];
-  workerSummaries: WorkerDaySummary[];
   filteredSummaries: WorkerDaySummary[];
   searchTerm: string;
   setSearchTerm: (term: string) => void;
@@ -30,7 +29,6 @@ export function AsistenciasView({
   selectedDate,
   setSelectedDate,
   availableDates,
-  workerSummaries,
   filteredSummaries,
   searchTerm,
   setSearchTerm,
@@ -62,7 +60,7 @@ export function AsistenciasView({
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Trabajadores Registrados</h3>
-          <p className="metric-value text-xl font-extrabold text-slate-900">{workerSummaries.length}</p>
+          <p className="metric-value text-xl font-extrabold text-slate-900">{filteredSummaries.length}</p>
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Programados a Trabajar</h3>

@@ -80,7 +80,7 @@ export function TrabajadoresView({
       <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Trabajadores</h3>
-          <p className="metric-value text-xl font-extrabold text-slate-900">{uniqueWorkers.length}</p>
+          <p className="metric-value text-xl font-extrabold text-slate-900">{departmentFilteredWorkers.length}</p>
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Trabajadores Filtrados</h3>

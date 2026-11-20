@@ -29,5 +29,9 @@ test.describe('Incidents Justification E2E Flow', () => {
     // 5. Verificar que el guardado surtió efecto (mensaje de éxito y modal cerrado).
     await expect(page.getByText('El cambio quedó realizado')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Justificar / Clasificar Incidencia')).toBeHidden();
+
+    // 6. El resumen de incidencias debe reflejar la búsqueda (no quedar con el total global).
+    await page.getByPlaceholder('Nombre o No.').fill('zzz-no-existe-999');
+    await expect(page.locator('.metrics-grid').getByText('Total Incidencias').locator('..').locator('.metric-value')).toHaveText('0');
   });
 });

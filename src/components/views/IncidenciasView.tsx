@@ -246,10 +246,10 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
     setCurrentPage(1);
   }, [searchTerm, selectedMonth, dateMode, dateFrom, dateTo, selectedCategoria, selectedMotivo]);
 
-  const totalAnomaliasCount = incidentsData.reduce((acc, w) => acc + w.anomalias.length, 0);
-  const totalAusencias = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Ausencia').length, 0);
-  const totalIncompletas = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Falta marca').length, 0);
-  const totalFueraDeTurno = incidentsData.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Fuera de turno').length, 0);
+  const totalAnomaliasCount = filteredWorkers.reduce((acc, w) => acc + w.anomalias.length, 0);
+  const totalAusencias = filteredWorkers.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Ausencia').length, 0);
+  const totalIncompletas = filteredWorkers.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Falta marca').length, 0);
+  const totalFueraDeTurno = filteredWorkers.reduce((acc, w) => acc + w.anomalias.filter(a => getAnomaliaCategoria(a) === 'Fuera de turno').length, 0);
 
   const dateModeOptions = [
     { label: 'Mes Completo', value: 'mes' },

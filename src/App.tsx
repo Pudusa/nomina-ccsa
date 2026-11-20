@@ -47,6 +47,7 @@ export default function App() {
 
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [workerSearchTerm, setWorkerSearchTerm] = useState<string>('');
+  const [incidentsSearchTerm, setIncidentsSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [selectedAttendanceShiftFilter, setSelectedAttendanceShiftFilter] = useState<string>('ALL');
   const [selectedAttendanceStatusFilter, setSelectedAttendanceStatusFilter] = useState<string>('ALL');
@@ -261,8 +262,8 @@ export default function App() {
   }, [workerSummariesWithRest, searchTerm, selectedAttendanceShiftFilter, selectedAttendanceStatusFilter]);
 
   const scheduledWorkersCount = useMemo(() => {
-    return workerSummariesWithRest.filter((w) => !w.isRest).length;
-  }, [workerSummariesWithRest]);
+    return filteredSummaries.filter((w) => !w.isRest).length;
+  }, [filteredSummaries]);
 
   const filteredWorkers = useMemo(() => {
     return uniqueWorkers.filter((w) => {
@@ -655,7 +656,6 @@ export default function App() {
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
             availableDates={availableDates}
-            workerSummaries={workerSummariesWithRest}
             filteredSummaries={sortedSummaries}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -731,8 +731,8 @@ export default function App() {
 
         {isDataLoaded && !loading && currentView === 'incidencias' && (
           <IncidenciasView
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
+            searchTerm={incidentsSearchTerm}
+            setSearchTerm={setIncidentsSearchTerm}
             canEdit={canEdit}
           />
         )}
