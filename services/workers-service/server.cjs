@@ -1,7 +1,16 @@
 const express = require('express');
 const cors = require('cors');
+
+for (const key of ['JWT_SECRET']) {
+  if (!process.env[key]) {
+    console.error(`[FATAL] Falta la variable de entorno obligatoria: ${key}`);
+    process.exit(1);
+  }
+}
+
 const db = require('./database.cjs');
 const workersRoutes = require('./routes/workers.routes.cjs');
+const { authenticateToken, requireRole } = require('./middleware/auth.middleware.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -68,7 +77,7 @@ app.get('/ready', (req, res) => {
   }
 });
 
-app.get('/metrics', (req, res) => {
+app.get('/metrics', authenticateToken, requireRole(['admin']), (req, res) => {
   res.status(200).json({
     timestamp: new Date().toISOString(),
     service: 'workers-service',

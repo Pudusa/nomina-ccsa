@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 
-for (const key of ['JWT_SECRET', 'INTERNAL_GATEWAY_SECRET']) {
+for (const key of ['JWT_SECRET']) {
   if (!process.env[key]) {
     console.error(`[FATAL] Falta la variable de entorno obligatoria: ${key}`);
     process.exit(1);

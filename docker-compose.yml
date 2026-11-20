@@ -9,7 +9,9 @@ services:
     environment:
       - AUTH_PORT=3001
       - DB_PATH=/app/data/auth.sqlite
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+      - JWT_SECRET=${JWT_SECRET}
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
     healthcheck:
@@ -33,7 +35,9 @@ services:
       - PORT=3002
       - DB_PATH=/app/data/workers.sqlite
       - NOMINA_DB_PATH=/app/data/nomina.db
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+      - JWT_SECRET=${JWT_SECRET}
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
     healthcheck:
@@ -57,7 +61,9 @@ services:
       - PORT=3003
       - DB_PATH=/app/data/attendance.sqlite
       - NOMINA_DB_PATH=/app/data/nomina.db
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+      - JWT_SECRET=${JWT_SECRET}
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
     healthcheck:
@@ -81,7 +87,9 @@ services:
       - PORT=3004
       - DB_PATH=/app/data/shifts.sqlite
       - NOMINA_DB_PATH=/app/data/nomina.db
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
+      - JWT_SECRET=${JWT_SECRET}
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
     healthcheck:
@@ -94,29 +102,19 @@ services:
     networks:
       - nomina-network
 
-  nomina-monolith:
+  api-gateway:
     build:
       context: .
-      dockerfile: server/Dockerfile
-    container_name: nomina-monolith-gateway
+      dockerfile: gateway/Dockerfile
+    container_name: nomina-api-gateway
     ports:
       - "4000:4000"
-    environment:
-      - PORT=4000
-      - DB_PATH=/app/data/nomina.db
-      - AUTH_SERVICE_URL=http://nomina-auth-service:3001
-      - WORKERS_SERVICE_URL=http://nomina-workers-service:3002
-      - ATTENDANCE_SERVICE_URL=http://nomina-attendance-service:3003
-      - SHIFTS_SERVICE_URL=http://nomina-shifts-service:3004
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-nomina-ccsa-2026}
-    volumes:
-      - ./data:/app/data
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/ready', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 45s
+      start_period: 10s
     depends_on:
       auth-service:
         condition: service_healthy

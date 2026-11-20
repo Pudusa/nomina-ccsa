@@ -9,5 +9,4 @@ metadata:
 data:
   PORT: "4000"
   AUTH_PORT: "3001"
-  AUTH_SERVICE_URL: "http://auth-service.nomina-ccsa.svc.cluster.local:3001"
   NODE_ENV: "production"

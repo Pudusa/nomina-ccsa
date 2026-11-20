@@ -4,10 +4,7 @@ const shiftsController = require('../controllers/shifts.controller.cjs');
 const { authenticateToken, requireRole } = require('../middleware/auth.middleware.cjs');
 
 router.get('/shift-templates', authenticateToken, shiftsController.getShiftTemplates);
-router.post('/shift-templates', authenticateToken, requireRole(['admin']), shiftsController.saveShiftTemplate);
-router.delete('/shift-templates/:name', authenticateToken, requireRole(['admin']), shiftsController.deleteShiftTemplate);
-
-router.get('/assignments', authenticateToken, shiftsController.getShiftAssignments);
-router.post('/assignments', authenticateToken, requireRole(['admin']), shiftsController.assignShift);
+router.post('/shift-templates', authenticateToken, requireRole(['admin', 'editor']), shiftsController.saveShiftTemplate);
+router.delete('/shift-templates/:name', authenticateToken, requireRole(['admin', 'editor']), shiftsController.deleteShiftTemplate);
 
 module.exports = router;
