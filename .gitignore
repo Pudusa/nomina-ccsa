@@ -32,3 +32,10 @@ server/nomina.db
 *.db
 *-wal
 *-shm
+
+# Configuración de asistentes / CLI (local, no versionar)
+.gemini/
+.opencode/
+.claude/
+GEMINI.md
+AGENTS.md
