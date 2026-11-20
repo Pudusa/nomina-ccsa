@@ -111,17 +111,18 @@ setInterval(() => {
 // Sincronización con los relojes ZK: recuperación al arrancar y a la hora del panel admin.
 // El arranque NO marca la fecha, para no consumir la ejecución programada del día.
 async function runZkSync(source) {
-  const now = new Date();
-  const settings = zkDevicesService.getSettings();
-  const shouldRun = source === 'arranque'
-    ? zkDevicesService.shouldRunOnStartup(now, settings)
-    : zkDevicesService.shouldRunScheduled(now, settings);
-  if (!shouldRun) return;
-  if (source !== 'arranque') zkDevicesService.markSyncedToday();
   try {
+    const now = new Date();
+    const settings = zkDevicesService.getSettings();
+    const shouldRun = source === 'arranque'
+      ? zkDevicesService.shouldRunOnStartup(now, settings)
+      : zkDevicesService.shouldRunScheduled(now, settings);
+    if (!shouldRun) return;
+    if (source !== 'arranque') zkDevicesService.markSyncedToday();
     const results = await zkDevicesService.syncAllDevices({ source });
     console.log(`[ZK] Sincronización ${source}:`, JSON.stringify(results));
   } catch (err) {
+    // Un fallo de configuración ZK no debe tumbar el proceso ni el healthcheck.
     console.error(`[ZK] Error en la sincronización ${source}:`, err);
   }
 }
