@@ -438,11 +438,20 @@ function saveIncidentJustification(req, res) {
 
 async function syncZkDevices(req, res) {
   try {
-    const results = await zkDevicesService.syncAllDevices();
+    const results = await zkDevicesService.syncAllDevices({ source: 'manual' });
     res.json({ success: true, results });
   } catch (err) {
     console.error('Error al sincronizar relojes ZK:', err);
     res.status(500).json({ error: 'Error al sincronizar los relojes ZK' });
+  }
+}
+
+function getZkHistory(req, res) {
+  try {
+    res.json(zkDevicesService.getHistory(50));
+  } catch (err) {
+    console.error('Error al leer el historial ZK:', err);
+    res.status(500).json({ error: 'Error al leer el historial' });
   }
 }
 
@@ -487,5 +496,6 @@ module.exports = {
   saveIncidentJustification,
   syncZkDevices,
   getZkConfig,
-  saveZkConfig
+  saveZkConfig,
+  getZkHistory
 };

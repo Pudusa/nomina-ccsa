@@ -108,21 +108,25 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-// Sincronización con los relojes ZK: al arrancar y a la hora configurada en el panel admin.
-// La última fecha se guarda en SQLite, así sobrevive a reinicios del contenedor.
-async function runZkSync() {
+// Sincronización con los relojes ZK: recuperación al arrancar y a la hora del panel admin.
+// El arranque NO marca la fecha, para no consumir la ejecución programada del día.
+async function runZkSync(source) {
   const now = new Date();
-  if (!zkDevicesService.shouldRunScheduled(now, zkDevicesService.getSettings())) return;
-  zkDevicesService.markSyncedToday();
+  const settings = zkDevicesService.getSettings();
+  const shouldRun = source === 'arranque'
+    ? zkDevicesService.shouldRunOnStartup(now, settings)
+    : zkDevicesService.shouldRunScheduled(now, settings);
+  if (!shouldRun) return;
+  if (source !== 'arranque') zkDevicesService.markSyncedToday();
   try {
-    const results = await zkDevicesService.syncAllDevices();
-    console.log('[ZK] Sincronización programada:', JSON.stringify(results));
+    const results = await zkDevicesService.syncAllDevices({ source });
+    console.log(`[ZK] Sincronización ${source}:`, JSON.stringify(results));
   } catch (err) {
-    console.error('[ZK] Error en la sincronización programada:', err);
+    console.error(`[ZK] Error en la sincronización ${source}:`, err);
   }
 }
-runZkSync();
-setInterval(runZkSync, 60 * 1000);
+runZkSync('arranque');
+setInterval(() => runZkSync('automatica'), 60 * 1000);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(JSON.stringify({

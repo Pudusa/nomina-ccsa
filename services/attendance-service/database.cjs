@@ -52,6 +52,17 @@ db.exec(`
     enabled INTEGER NOT NULL DEFAULT 1
   );
 
+  CREATE TABLE IF NOT EXISTS zk_sync_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT NOT NULL,
+    source TEXT NOT NULL,
+    device_ip TEXT NOT NULL,
+    ok INTEGER NOT NULL,
+    added INTEGER NOT NULL DEFAULT 0,
+    skipped INTEGER NOT NULL DEFAULT 0,
+    error TEXT
+  );
+
   CREATE INDEX IF NOT EXISTS idx_attendance_worker_date ON attendance(worker_no, date);
   CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 `);

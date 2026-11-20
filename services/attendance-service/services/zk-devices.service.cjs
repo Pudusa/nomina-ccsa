@@ -11,6 +11,11 @@ function dateKey(now) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+function nowString(now = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${dateKey(now)} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+}
+
 // recordTime llega en ISO UTC; se convierte a hora local del servidor, que es
 // la del reloj. Así se conserva la hora exacta sin conversión artificial.
 function localDateTime(recordTime) {
@@ -78,17 +83,40 @@ function devicesToSync(database = db) {
   return stored.length ? stored : parseDevices();
 }
 
-// Se ejecuta al arrancar (lastSyncDate null) y a la hora configurada de cada día.
-// La fecha persistida evita duplicar tras reinicios del contenedor.
+// Solo a la hora configurada. No incluye el arranque: si lo hiciera, arrancar
+// a las 08:00 marcaría el día y la sincronización de las 12:00 nunca correría.
 function shouldRunScheduled(now, settings) {
   if (!settings || !settings.enabled) return false;
   if (settings.lastSyncDate === dateKey(now)) return false;
-  const isConfiguredTime = now.getHours() === settings.syncHour && now.getMinutes() === settings.syncMinute;
-  return isConfiguredTime || settings.lastSyncDate === null;
+  return now.getHours() === settings.syncHour && now.getMinutes() === settings.syncMinute;
+}
+
+// Recuperación al arrancar si no se sincronizó hoy. No marca la fecha, para no
+// consumir la ejecución programada de ese mismo día.
+function shouldRunOnStartup(now, settings) {
+  if (!settings || !settings.enabled) return false;
+  return settings.lastSyncDate !== dateKey(now);
 }
 
 function markSyncedToday(database = db) {
   database.prepare('UPDATE zk_settings SET last_sync_date = ? WHERE id = 1').run(dateKey(new Date()));
+}
+
+function getHistory(limit = 50, database = db) {
+  return database.prepare(`
+    SELECT id, started_at AS startedAt, source, device_ip AS deviceIp, ok, added, skipped, error
+    FROM zk_sync_history ORDER BY id DESC LIMIT ?
+  `).all(limit);
+}
+
+function recordHistory(results, source, startedAt, database = db) {
+  const insert = database.prepare(`
+    INSERT INTO zk_sync_history (started_at, source, device_ip, ok, added, skipped, error)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const r of results) {
+    insert.run(startedAt, source, r.ip, r.ok ? 1 : 0, r.added || 0, r.skipped || 0, r.error || null);
+  }
 }
 
 async function syncDevice(device, options = {}) {
@@ -113,8 +141,10 @@ async function syncDevice(device, options = {}) {
 }
 
 async function syncAllDevices(options = {}) {
-  const devices = options.devices || devicesToSync(options.db || db);
+  const database = options.db || db;
+  const devices = options.devices || devicesToSync(database);
   const results = [];
+  const startedAt = nowString();
   // Secuencial a propósito: el firmware ZEM 6.5.4 se bloquea con peticiones concurrentes.
   for (const device of devices) {
     try {
@@ -126,10 +156,12 @@ async function syncAllDevices(options = {}) {
       results.push({ ip: device.ip, ok: false, error: 'No se pudo sincronizar' });
     }
   }
+  if (options.source && results.length) recordHistory(results, options.source, startedAt, database);
   return results;
 }
 
 module.exports = {
-  dateKey, localDateTime, parseDevices, getSettings, getConfig, saveConfig,
-  shouldRunScheduled, markSyncedToday, syncDevice, syncAllDevices,
+  dateKey, nowString, localDateTime, parseDevices, getSettings, getConfig, saveConfig,
+  shouldRunScheduled, shouldRunOnStartup, markSyncedToday, getHistory,
+  syncDevice, syncAllDevices,
 };

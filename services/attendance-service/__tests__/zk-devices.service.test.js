@@ -14,7 +14,8 @@ vi.hoisted(() => {
 import db from '../database.cjs';
 const {
     localDateTime, parseDevices, syncDevice, syncAllDevices,
-    getSettings, getConfig, saveConfig, shouldRunScheduled, markSyncedToday,
+    getSettings, getConfig, saveConfig, shouldRunScheduled, shouldRunOnStartup,
+    markSyncedToday, getHistory,
 } = await import('../services/zk-devices.service.cjs');
 
 function makeLib(logs, options = {}) {
@@ -49,6 +50,7 @@ beforeEach(() => {
     db.exec(`
         DELETE FROM attendance;
         DELETE FROM zk_devices;
+        DELETE FROM zk_sync_history;
         UPDATE zk_settings SET sync_hour = 0, sync_minute = 0, enabled = 1, last_sync_date = NULL WHERE id = 1;
     `);
     delete process.env.ZK_DEVICES;
@@ -212,22 +214,23 @@ describe('configuración persistida — 7 casos', () => {
     });
 });
 
-describe('shouldRunScheduled — 5 casos', () => {
+describe('arranque y hora programada — 5 casos', () => {
     const base = { syncHour: 12, syncMinute: 30, enabled: 1, lastSyncDate: null };
-    it('22: dispara al arrancar si nunca se sincronizó', () => {
-        expect(shouldRunScheduled(new Date(2026, 10, 20, 8, 0), base)).toBe(true);
+    it('22: el arranque recupera si no se sincronizó hoy', () => {
+        expect(shouldRunOnStartup(new Date(2026, 10, 20, 8, 0), base)).toBe(true);
     });
-    it('23: no dispara dos veces el mismo día', () => {
-        expect(shouldRunScheduled(new Date(2026, 10, 20, 12, 30), { ...base, lastSyncDate: '2026-11-20' })).toBe(false);
+    it('23: el arranque no se dispara dos veces el mismo día', () => {
+        expect(shouldRunOnStartup(new Date(2026, 10, 20, 8, 0), { ...base, lastSyncDate: '2026-11-20' })).toBe(false);
     });
-    it('24: dispara a la hora configurada de un día distinto', () => {
+    it('24: la automática dispara a la hora configurada de un día distinto', () => {
         expect(shouldRunScheduled(new Date(2026, 10, 21, 12, 30), { ...base, lastSyncDate: '2026-11-20' })).toBe(true);
     });
-    it('25: no dispara si la automática está desactivada', () => {
+    it('25: la automática no dispara si está desactivada', () => {
         expect(shouldRunScheduled(new Date(2026, 10, 21, 12, 30), { ...base, enabled: 0 })).toBe(false);
     });
-    it('26: no dispara fuera de la hora si ya hubo sincronización previa', () => {
-        expect(shouldRunScheduled(new Date(2026, 10, 21, 11, 30), { ...base, lastSyncDate: '2026-11-20' })).toBe(false);
+    it('26: REGRESIÓN — arrancar temprano no consume la automática de las 12:30', () => {
+        expect(shouldRunScheduled(new Date(2026, 10, 20, 8, 0), base)).toBe(false);
+        expect(shouldRunScheduled(new Date(2026, 10, 20, 12, 30), base)).toBe(true);
     });
 });
 
@@ -259,5 +262,50 @@ describe('equipos configurados — 2 casos', () => {
         }
         await syncAllDevices({ zkLib: Lib, db });
         expect(ips).toEqual(['10.0.0.9']);
+    });
+});
+
+describe('historial de importaciones — 5 casos', () => {
+    it('29: registra el origen manual y los contadores', async () => {
+        const logs = [{ deviceUserId: '791', recordTime: '2026-07-13T13:50:20.000Z' }];
+        const { Lib } = makeLib(logs);
+        await syncAllDevices({ devices: [{ ip: '1.2.3.4' }], zkLib: Lib, db, source: 'manual' });
+        const history = getHistory(50, db);
+        expect(history).toHaveLength(1);
+        expect(history[0].source).toBe('manual');
+        expect(history[0].deviceIp).toBe('1.2.3.4');
+        expect(history[0].added).toBe(1);
+        expect(history[0].skipped).toBe(0);
+    });
+    it('30: registra el origen automático', async () => {
+        const { Lib } = makeLib([]);
+        await syncAllDevices({ devices: [{ ip: '1.2.3.4' }], zkLib: Lib, db, source: 'automatica' });
+        expect(getHistory(50, db)[0].source).toBe('automatica');
+    });
+    it('31: registra un reloj fallido con error genérico', async () => {
+        class FlakyLib {
+            constructor(ip) { this.ip = ip; }
+            async createSocket() { if (this.ip === 'B') throw new Error('detalle interno'); }
+            async getAttendances() { return { data: [] }; }
+            async disconnect() {}
+        }
+        await syncAllDevices({ devices: [{ ip: 'A' }, { ip: 'B' }], zkLib: FlakyLib, db, source: 'automatica' });
+        const history = getHistory(50, db);
+        expect(history).toHaveLength(2);
+        const failed = history.find(h => h.deviceIp === 'B');
+        expect(failed.ok).toBe(0);
+        expect(failed.error).toBe('No se pudo sincronizar');
+    });
+    it('32: devuelve las importaciones más recientes primero', async () => {
+        const { Lib } = makeLib([]);
+        await syncAllDevices({ devices: [{ ip: '1.2.3.4' }], zkLib: Lib, db, source: 'manual' });
+        const second = makeLib([]);
+        await syncAllDevices({ devices: [{ ip: '1.2.3.4' }], zkLib: second.Lib, db, source: 'automatica' });
+        expect(getHistory(50, db).map(h => h.source)).toEqual(['automatica', 'manual']);
+    });
+    it('33: una sincronización sin origen no ensucia el historial', async () => {
+        const { Lib } = makeLib([]);
+        await syncAllDevices({ devices: [{ ip: '1.2.3.4' }], zkLib: Lib, db });
+        expect(getHistory(50, db)).toEqual([]);
     });
 });

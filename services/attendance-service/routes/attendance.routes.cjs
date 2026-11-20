@@ -9,6 +9,7 @@ router.post('/upload', authenticateToken, requireRole(['admin']), upload.single(
 router.post('/attendance/zk-sync', authenticateToken, requireRole(['admin']), attendanceController.syncZkDevices);
 router.get('/attendance/zk/config', authenticateToken, requireRole(['admin']), attendanceController.getZkConfig);
 router.put('/attendance/zk/config', authenticateToken, requireRole(['admin']), attendanceController.saveZkConfig);
+router.get('/attendance/zk/history', authenticateToken, requireRole(['admin']), attendanceController.getZkHistory);
 router.get('/dates', authenticateToken, attendanceController.getDates);
 router.get('/attendance', authenticateToken, attendanceController.getAttendanceByDate);
 router.get('/attendance/range', authenticateToken, attendanceController.getAttendanceByRange);

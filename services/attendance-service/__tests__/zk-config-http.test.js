@@ -24,6 +24,7 @@ app.use('/api', attendanceRoutes);
 beforeEach(() => {
     db.exec(`
         DELETE FROM zk_devices;
+        DELETE FROM zk_sync_history;
         UPDATE zk_settings SET sync_hour = 0, sync_minute = 0, enabled = 1, last_sync_date = NULL WHERE id = 1;
     `);
 });
@@ -74,6 +75,25 @@ describe('configuración ZK por HTTP — 5 casos', () => {
     it('5: niega el acceso a un rol que no es administrador', async () => {
         const res = await request(app)
             .get('/api/attendance/zk/config')
+            .set('Authorization', `Bearer ${VIEWER}`);
+        expect(res.status).toBe(403);
+    });
+    it('6: expone el historial con el origen de cada importación', async () => {
+        db.prepare(`
+            INSERT INTO zk_sync_history (started_at, source, device_ip, ok, added, skipped, error)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('2026-11-20 12:00:00', 'automatica', '192.168.107.13', 1, 3, 1, null);
+        const res = await request(app)
+            .get('/api/attendance/zk/history')
+            .set('Authorization', `Bearer ${ADMIN}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(1);
+        expect(res.body[0].source).toBe('automatica');
+        expect(res.body[0].added).toBe(3);
+    });
+    it('7: niega el historial a un rol que no es administrador', async () => {
+        const res = await request(app)
+            .get('/api/attendance/zk/history')
             .set('Authorization', `Bearer ${VIEWER}`);
         expect(res.status).toBe(403);
     });
