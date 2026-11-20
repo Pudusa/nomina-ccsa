@@ -40,39 +40,6 @@ try {
   // Column already exists
 }
 
-// Auto-seed workers and shift_rules from nomina.db if workers table is empty
-const workerCount = db.prepare('SELECT COUNT(*) as count FROM workers').get();
-if (workerCount.count === 0) {
-const nominaDbPath = process.env.NOMINA_DB_PATH || 
-    (fs.existsSync(path.join(dbDir, 'nomina.db')) ? path.join(dbDir, 'nomina.db') :
-     fs.existsSync(path.join(__dirname, '../../data/nomina.db')) ? path.join(__dirname, '../../data/nomina.db') :
-     path.join(__dirname, '../../../data/nomina.db'));
-  if (fs.existsSync(nominaDbPath)) {
-    try {
-      const nominaDb = new Database(nominaDbPath, { readonly: true });
-      const workers = nominaDb.prepare('SELECT * FROM workers').all();
-      const rules = nominaDb.prepare('SELECT * FROM shift_rules').all();
-      nominaDb.close();
-
-      const insertWorker = db.prepare('INSERT OR REPLACE INTO workers (no, nombre, default_turno, departamento) VALUES (?, ?, ?, ?)');
-      const insertRule = db.prepare('INSERT OR REPLACE INTO shift_rules (id, worker_no, type, turno, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)');
-
-      const seedTx = db.transaction(() => {
-        for (const w of workers) {
-          insertWorker.run(w.no, w.nombre, w.default_turno, w.departamento || 'General');
-        }
-        for (const r of rules) {
-          insertRule.run(r.id, r.worker_no, r.type, r.turno, r.start_date, r.end_date);
-        }
-      });
-      seedTx();
-      console.log(`[Workers Microservice] Seeded ${workers.length} workers and ${rules.length} shift rules from nomina.db into workers.sqlite`);
-    } catch (err) {
-      console.error('[Workers Microservice] Failed to seed from nomina.db:', err);
-    }
-  }
-}
-
 console.log('[Workers Microservice] Connected autonomously to dedicated workers database at:', dbPath);
 
 module.exports = db;

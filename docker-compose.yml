@@ -34,7 +34,6 @@ services:
     environment:
       - PORT=3002
       - DB_PATH=/app/data/workers.sqlite
-      - NOMINA_DB_PATH=/app/data/nomina.db
       - JWT_SECRET=${JWT_SECRET}
     env_file:
       - .env
@@ -60,7 +59,6 @@ services:
     environment:
       - PORT=3003
       - DB_PATH=/app/data/attendance.sqlite
-      - NOMINA_DB_PATH=/app/data/nomina.db
       - JWT_SECRET=${JWT_SECRET}
     env_file:
       - .env
@@ -86,7 +84,6 @@ services:
     environment:
       - PORT=3004
       - DB_PATH=/app/data/shifts.sqlite
-      - NOMINA_DB_PATH=/app/data/nomina.db
       - JWT_SECRET=${JWT_SECRET}
     env_file:
       - .env
