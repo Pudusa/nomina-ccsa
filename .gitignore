@@ -23,3 +23,12 @@ server/nomina.db
 *.njsproj
 *.sln
 *.sw?
+
+# Secretos locales (usar .env.example como plantilla)
+.env
+
+# Bases de datos y logs de SQLite
+*.sqlite*
+*.db
+*-wal
+*-shm

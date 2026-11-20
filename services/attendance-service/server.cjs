@@ -1,7 +1,17 @@
 const express = require('express');
 const cors = require('cors');
+
+for (const key of ['JWT_SECRET', 'INTERNAL_GATEWAY_SECRET']) {
+  if (!process.env[key]) {
+    console.error(`[FATAL] Falta la variable de entorno obligatoria: ${key}`);
+    process.exit(1);
+  }
+}
+
 const db = require('./database.cjs');
 const attendanceRoutes = require('./routes/attendance.routes.cjs');
+const { authenticateToken, requireRole } = require('./middleware/auth.middleware.cjs');
+const { reloadAttendanceFiles } = require('./services/reload.service.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -68,7 +78,7 @@ app.get('/ready', (req, res) => {
   }
 });
 
-app.get('/metrics', (req, res) => {
+app.get('/metrics', authenticateToken, requireRole(['admin']), (req, res) => {
   res.status(200).json({
     timestamp: new Date().toISOString(),
     service: 'attendance-service',
@@ -80,6 +90,22 @@ app.get('/metrics', (req, res) => {
 });
 
 app.use('/api', attendanceRoutes);
+
+// Recarga diaria de los archivos de asistencia a las 10:00 (hora local).
+// Con >= 10 también recarga si el servicio arranca después de las 10.
+let lastReloadDate = null;
+setInterval(() => {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (now.getHours() >= 10 && lastReloadDate !== today) {
+    lastReloadDate = today;
+    try {
+      reloadAttendanceFiles();
+    } catch (err) {
+      console.error('[Reload] Error en la recarga programada:', err.message);
+    }
+  }
+}, 60 * 1000);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(JSON.stringify({

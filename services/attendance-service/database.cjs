@@ -43,19 +43,24 @@ db.exec(`
     verification TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS incident_justifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    worker_no TEXT,
+    date TEXT,
+    tipo TEXT,
+    descripcion TEXT,
+    updated_at TEXT,
+    UNIQUE(worker_no, date)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_attendance_worker_date ON attendance(worker_no, date);
   CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 `);
 
 // Check if attendance is empty or has corrupted 00:00:00 times
 const attCount = db.prepare('SELECT COUNT(*) as count FROM attendance').get();
-const zeroTimesCount = db.prepare("SELECT COUNT(*) as count FROM attendance WHERE time = '00:00:00'").get();
 
-if (attCount.count === 0 || (zeroTimesCount.count > 0 && zeroTimesCount.count === attCount.count)) {
-  if (zeroTimesCount.count > 0 && zeroTimesCount.count === attCount.count) {
-    console.log('[Attendance Microservice] Detected corrupted 00:00:00 timestamps in database. Re-seeding from source Excel files...');
-    db.exec('DELETE FROM attendance');
-  }
+if (attCount.count === 0) {
 
   const excelPaths = [
     path.join(__dirname, '../../edifico Admin.xls'),

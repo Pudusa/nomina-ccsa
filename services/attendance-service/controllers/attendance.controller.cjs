@@ -14,51 +14,13 @@ function uploadAttendance(req, res) {
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet);
 
-    const defaultTurnoName = 'Sin turno';
-
-    const checkExistingAttendance = db.prepare(`
-      SELECT id FROM attendance
-      WHERE worker_no = ? AND timestamp = ? AND location_id = ? AND verification = ?
-    `);
-
-    const insertAttendance = db.prepare(`
-      INSERT INTO attendance (worker_no, date, time, timestamp, location_id, verification)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    let newRecordsCount = 0;
-    let duplicateRecordsCount = 0;
-
-    const transaction = db.transaction((rows) => {
-      for (const row of rows) {
-        const no = String(row['No.'] || '').trim();
-        const rawDate = row['Fecha/Hora'];
-        const locationId = String(row['Location ID'] || '');
-        const verification = String(row['Verificación'] || '');
-
-        const parsedRec = attendanceService.parseAttendanceRecord(rawDate, XLSX);
-        if (!no || !parsedRec) continue;
-
-        const { dateStr, timeStr, timestampStr } = parsedRec;
-
-        const existing = checkExistingAttendance.get(no, timestampStr, locationId, verification);
-
-        if (!existing) {
-          insertAttendance.run(no, dateStr, timeStr, timestampStr, locationId, verification);
-          newRecordsCount++;
-        } else {
-          duplicateRecordsCount++;
-        }
-      }
-    });
-
-    transaction(rows);
+    const { added, skipped } = attendanceService.importAttendanceRows(rows, XLSX, db);
 
     res.json({
       message: 'Archivo procesado con éxito bajo política de auditoría.',
       totalRowsInFile: rows.length,
-      newRecordsAdded: newRecordsCount,
-      duplicatesSkipped: duplicateRecordsCount,
+      newRecordsAdded: added,
+      duplicatesSkipped: skipped,
     });
   } catch (err) {
     console.error('Upload error:', err);
@@ -241,6 +203,17 @@ function getAttendanceByRange(req, res) {
   }
 }
 
+function getAnomaliaCategoria(tipo) {
+  const t = (tipo || '').toLowerCase();
+  if (t.includes('fuera') || t.includes('turno') || t.includes('comisión') || t.includes('campo') || t.includes('comision')) {
+    return 'Fuera de turno';
+  }
+  if (t.includes('olvido') || t.includes('biométrico') || t.includes('biometrico') || t.includes('salida') || t.includes('entrada') || t.includes('falta salida') || t.includes('falta entrada')) {
+    return 'Falta marca';
+  }
+  return 'Ausencia';
+}
+
 function getIncidents(req, res) {
   try {
     const { startDate, endDate, month } = req.query;
@@ -257,6 +230,12 @@ function getIncidents(req, res) {
     query += ' ORDER BY date ASC, timestamp ASC';
 
     const records = db.prepare(query).all(...params);
+
+    const justificationsRows = db.prepare('SELECT worker_no, date, tipo, descripcion FROM incident_justifications').all();
+    const justificationsMap = new Map();
+    justificationsRows.forEach(j => {
+      justificationsMap.set(`${j.worker_no}_${j.date}`, { tipo: j.tipo, descripcion: j.descripcion });
+    });
 
     const workersDb = attendanceService.getWorkersDb();
     let workers = [];
@@ -452,53 +431,48 @@ function getIncidents(req, res) {
         const rawTimes = recordEntry && recordEntry.times ? recordEntry.times : [];
         const filteredTimes = attendanceService.filterDuplicatePunches(rawTimes);
 
+        const pushAnomaly = (defaultTipo) => {
+          if (!incidentsByWorker.has(workerNo)) {
+            incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
+          }
+          const jKey = `${workerNo}_${date}`;
+          const savedJ = justificationsMap.get(jKey);
+          const tipo = savedJ ? savedJ.tipo : defaultTipo;
+          const descripcion = savedJ ? savedJ.descripcion : '';
+          const categoria = getAnomaliaCategoria(tipo);
+
+          const marcas = filteredTimes.map(t => {
+            const hh = String(t.getHours()).padStart(2, '0');
+            const mm = String(t.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+          });
+
+          incidentsByWorker.get(workerNo).anomalias.push({
+            id: anomalyIdCounter++,
+            categoria,
+            tipo,
+            descripcion,
+            fecha: date,
+            marcas
+          });
+        };
+
         if (isRestDay) {
           if (filteredTimes.length > 0) {
-            if (!incidentsByWorker.has(workerNo)) {
-              incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
-            }
-            incidentsByWorker.get(workerNo).anomalias.push({
-              id: anomalyIdCounter++,
-              tipo: 'Fuera de turno',
-              fecha: date
-            });
+            pushAnomaly('Fuera de turno');
           }
         } else {
           if (filteredTimes.length === 0) {
-            if (!incidentsByWorker.has(workerNo)) {
-              incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
-            }
-            incidentsByWorker.get(workerNo).anomalias.push({
-              id: anomalyIdCounter++,
-              categoria: 'Ausencia',
-              tipo: 'Falta injustificada',
-              fecha: date
-            });
+            pushAnomaly('Falta injustificada');
           } else if (filteredTimes.length === 1) {
             if (expectedNumMarcas === 2) {
-              if (!incidentsByWorker.has(workerNo)) {
-                incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
-              }
               const hour = filteredTimes[0].getHours();
               const falta = (hour < 12) ? 'Falta salida injustificada' : 'Falta entrada injustificada';
-              incidentsByWorker.get(workerNo).anomalias.push({
-                id: anomalyIdCounter++,
-                categoria: 'Falta marca',
-                tipo: falta,
-                fecha: date
-              });
+              pushAnomaly(falta);
             }
           } else if (filteredTimes.length >= 2) {
             if (expectedNumMarcas === 1) {
-              if (!incidentsByWorker.has(workerNo)) {
-                incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
-              }
-              incidentsByWorker.get(workerNo).anomalias.push({
-                id: anomalyIdCounter++,
-                categoria: 'Fuera de turno',
-                tipo: 'Fuera de turno',
-                fecha: date
-              });
+              pushAnomaly('Fuera de turno');
             }
           }
         }
@@ -519,10 +493,33 @@ function getIncidents(req, res) {
   }
 }
 
+function saveIncidentJustification(req, res) {
+  try {
+    const { workerNo, date, tipo, descripcion } = req.body;
+    if (!workerNo || !date) {
+      return res.status(400).json({ error: 'workerNo and date are required' });
+    }
+    const stmt = db.prepare(`
+      INSERT INTO incident_justifications (worker_no, date, tipo, descripcion, updated_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(worker_no, date) DO UPDATE SET
+        tipo = excluded.tipo,
+        descripcion = excluded.descripcion,
+        updated_at = datetime('now')
+    `);
+    stmt.run(String(workerNo), String(date), String(tipo || 'Falta injustificada'), String(descripcion || ''));
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error saving justification:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   getDates,
   getAttendanceByDate,
   getAttendanceByRange,
   uploadAttendance,
-  getIncidents
+  getIncidents,
+  saveIncidentJustification
 };

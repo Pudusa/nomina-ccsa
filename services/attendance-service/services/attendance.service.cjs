@@ -230,6 +230,40 @@ function classifyPunches(times, turno, ruleFirstMarkDir, numMarcas = 2) {
     return { entradaMañana, salidaMañana, entradaTarde, salidaTarde, marca1, marca2 };
 }
 
+// Inserta marcas nuevas y omite las ya existentes (misma clave que usa el upload).
+function importAttendanceRows(rows, XLSX, db) {
+    const checkExisting = db.prepare(`
+        SELECT id FROM attendance
+        WHERE worker_no = ? AND timestamp = ? AND location_id = ? AND verification = ?
+    `);
+    const insert = db.prepare(`
+        INSERT INTO attendance (worker_no, date, time, timestamp, location_id, verification)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    let added = 0;
+    let skipped = 0;
+    db.transaction((rs) => {
+        for (const row of rs) {
+            const no = String(row['No.'] || '').trim();
+            const parsed = parseAttendanceRecord(row['Fecha/Hora'], XLSX);
+            if (!no || !parsed) continue;
+
+            const locationId = String(row['Location ID'] || '');
+            const verification = String(row['Verificación'] || '');
+
+            if (checkExisting.get(no, parsed.timestampStr, locationId, verification)) {
+                skipped++;
+            } else {
+                insert.run(no, parsed.dateStr, parsed.timeStr, parsed.timestampStr, locationId, verification);
+                added++;
+            }
+        }
+    })(rows);
+
+    return { added, skipped };
+}
+
 module.exports = {
     getWorkersDb,
     getNominaDb,
@@ -239,4 +273,5 @@ module.exports = {
     formatDateTime,
     filterDuplicatePunches,
     classifyPunches,
+    importAttendanceRows,
 };
