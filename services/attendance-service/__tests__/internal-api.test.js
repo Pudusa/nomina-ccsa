@@ -71,4 +71,42 @@ describe('Cliente HTTP interno', () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
         await expect(getWorkers('Bearer token')).rejects.toThrow('Error 500');
     });
+
+    // getWorkers — casos restantes (total 5)
+    it('getWorkers convierte no a string', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [{ no: 7, defaultTurno: 'T' }] }));
+        const w = await getWorkers('Bearer');
+        expect(w[0].no).toBe('7');
+    });
+    it('getWorkers por defecto rules vacio y sin header', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [{ no: 8, defaultTurno: 'T' }] }));
+        const w = await getWorkers();
+        expect(w[0].rules).toEqual([]);
+        expect(fetch).toHaveBeenCalledWith(expect.anything(), { headers: {} });
+    });
+    it('getWorkers con array vacio', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }));
+        expect(await getWorkers('Bearer')).toEqual([]);
+    });
+
+    // getShiftData — casos restantes (total 5)
+    it('getShiftData sin meses usa BASE', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'T': [{ dayIndex: 0, hours: 8, markDirection: 'entrada', numMarcas: 2 }] }) }));
+        const { distributions } = await getShiftData('Bearer');
+        expect(distributions[0].year_month).toBe('BASE');
+        expect(fetch.mock.calls[0][0]).toContain('year_month=BASE');
+    });
+    it('getShiftData ordena plantillas por nombre e ids estables', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({
+            'Zeta': [{ dayIndex: 0, hours: 8, markDirection: 'entrada', numMarcas: 2 }],
+            'Alfa': [{ dayIndex: 0, hours: 8, markDirection: 'entrada', numMarcas: 2 }],
+        }) }));
+        const { templates, distributions } = await getShiftData('Bearer', '2026-11');
+        expect(templates).toEqual([{ id: 1, name: 'Alfa' }, { id: 2, name: 'Zeta' }]);
+        expect(distributions.find(d => d.year_month === '2026-11' && d.shift_id === 1)).toBeDefined();
+    });
+    it('getShiftData propaga error HTTP', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+        await expect(getShiftData('Bearer', '2026-11')).rejects.toThrow('Error 503');
+    });
 });
