@@ -24,26 +24,28 @@ async function getWorkers(authHeader) {
   }));
 }
 
-async function getShiftData(authHeader, yearMonth) {
-  const url = yearMonth
-    ? `${SHIFTS_URL}/api/shift-templates?year_month=${encodeURIComponent(yearMonth)}`
-    : `${SHIFTS_URL}/api/shift-templates`;
-  const data = await getJson(url, authHeader);
-  // GET /api/shift-templates devuelve { [nombre]: [{ dayIndex, hours, markDirection, numMarcas }] }
-  // Lo adaptamos al formato de tuplas [hours, markDirection, dayIndex, numMarcas] que usa el controlador.
+async function getShiftData(authHeader, yearMonths) {
+  // yearMonths puede ser un string, un array de meses, o vacío (=> BASE).
+  const months = Array.isArray(yearMonths) ? yearMonths : [yearMonths || 'BASE'];
   const templates = [];
   const distributions = [];
-  let id = 1;
-  for (const [name, days] of Object.entries(data)) {
-    const shiftId = id++;
-    templates.push({ id: shiftId, name });
-    const tuples = days.map((d) => [
-      d.hours,
-      d.markDirection,
-      d.dayIndex,
-      d.numMarcas,
-    ]);
-    distributions.push({ shift_id: shiftId, year_month: yearMonth || 'BASE', days_json: JSON.stringify(tuples) });
+  const idsByName = new Map();
+
+  for (const month of months) {
+    const url = `${SHIFTS_URL}/api/shift-templates?year_month=${encodeURIComponent(month)}`;
+    const data = await getJson(url, authHeader);
+    // GET /api/shift-templates devuelve { [nombre]: [{ dayIndex, hours, markDirection, numMarcas }] }
+    // Ordenamos por nombre para que los ids sintéticos sean iguales en todas las llamadas.
+    const entries = Object.entries(data).sort(([a], [b]) => a.localeCompare(b));
+    for (const [name, days] of entries) {
+      if (!idsByName.has(name)) {
+        const shiftId = idsByName.size + 1;
+        idsByName.set(name, shiftId);
+        templates.push({ id: shiftId, name });
+      }
+      const tuples = days.map((d) => [d.hours, d.markDirection, d.dayIndex, d.numMarcas]);
+      distributions.push({ shift_id: idsByName.get(name), year_month: month, days_json: JSON.stringify(tuples) });
+    }
   }
   return { templates, distributions };
 }

@@ -212,14 +212,6 @@ async function getIncidents(req, res) {
       workersMap.set(w.no, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: w.rules || [] });
     });
 
-    const { templates, distributions } = await internalApi.getShiftData(authHeader);
-    const templatesMap = {};
-    const distsByShift = new Map();
-    templates.forEach(t => { templatesMap[t.name] = t.id; });
-    distributions.forEach(d => {
-      if (!distsByShift.has(d.shift_id)) distsByShift.set(d.shift_id, d.days_json);
-    });
-
     let rangeStart = startDate;
     let rangeEnd = endDate;
     if (!rangeStart || !rangeEnd) {
@@ -248,6 +240,17 @@ async function getIncidents(req, res) {
       datesInRange.push(`${y}-${m}-${d}`);
       curr.setDate(curr.getDate() + 1);
     }
+
+    // Pedir las distribuciones de cada mes del rango: el endpoint ya aplica
+    // el fallback mes -> BASE -> primer mes disponible por turno.
+    const monthsInRange = [...new Set(datesInRange.map(d => d.substring(0, 7)))];
+    const { templates, distributions } = await internalApi.getShiftData(authHeader, monthsInRange);
+    const templatesMap = {};
+    const distsByShiftMonth = new Map();
+    templates.forEach(t => { templatesMap[t.name] = t.id; });
+    distributions.forEach(d => {
+      distsByShiftMonth.set(`${d.shift_id}_${d.year_month}`, d.days_json);
+    });
 
     const workerDateMap = new Map();
     records.forEach((r) => {
@@ -303,7 +306,8 @@ async function getIncidents(req, res) {
         let expectedNumMarcas = 2;
         const templateId = templatesMap[turno];
         if (templateId) {
-          const daysJson = distsByShift.get(templateId);
+          const daysJson = distsByShiftMonth.get(`${templateId}_${yearMonth}`) ||
+                           distsByShiftMonth.get(`${templateId}_BASE`);
           if (daysJson) {
             try {
               const parsed = typeof daysJson === 'string' ? JSON.parse(daysJson) : daysJson;
