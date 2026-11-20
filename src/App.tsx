@@ -13,6 +13,7 @@ import { CreateShiftModal } from './components/modals/CreateShiftModal';
 import { EditDayModal } from './components/modals/EditDayModal';
 import { EditWorkerModal } from './components/modals/EditWorkerModal';
 import { WorkerCalendarModal } from './components/modals/WorkerCalendarModal';
+import { ZkConfigModal, type ZkDeviceConfig } from './components/modals/ZkConfigModal';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
@@ -27,6 +28,14 @@ export default function App() {
   const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [zkSyncing, setZkSyncing] = useState<boolean>(false);
+  const [zkSyncMsg, setZkSyncMsg] = useState<string>('');
+  const [zkConfigOpen, setZkConfigOpen] = useState<boolean>(false);
+  const [zkConfig, setZkConfig] = useState<{
+    settings: { syncHour: number; syncMinute: number; enabled: boolean };
+    devices: ZkDeviceConfig[];
+  }>({ settings: { syncHour: 0, syncMinute: 0, enabled: true }, devices: [] });
+  const [zkConfigBusy, setZkConfigBusy] = useState<boolean>(false);
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -206,6 +215,68 @@ export default function App() {
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+    }
+  };
+
+  const handleZkSync = async () => {
+    setZkSyncing(true);
+    setZkSyncMsg('');
+    setError(null);
+    try {
+      const res = await apiFetch('/api/attendance/zk-sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al sincronizar los relojes');
+      await refreshData();
+      window.dispatchEvent(new CustomEvent('nomina:attendance-uploaded'));
+      const results = data.results || [];
+      const added = results.reduce((sum: number, r: any) => sum + (r.added || 0), 0);
+      const failed = results.filter((r: any) => !r.ok).length;
+      setZkSyncMsg(`Marcajes importados: ${added}${failed ? ` · ${failed} reloj(es) con error` : ''}`);
+      setTimeout(() => setZkSyncMsg(''), 6000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setZkSyncing(false);
+    }
+  };
+
+  const openZkConfig = async () => {
+    setZkConfigBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch('/api/attendance/zk/config');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al leer la configuración de relojes');
+      setZkConfig(data);
+      setZkConfigOpen(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setZkConfigBusy(false);
+    }
+  };
+
+  const saveZkConfig = async (config: {
+    hour: number; minute: number; enabled: boolean; devices: ZkDeviceConfig[];
+  }) => {
+    setZkConfigBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch('/api/attendance/zk/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar la configuración');
+      setZkConfig(data);
+      setZkConfigOpen(false);
+      setZkSyncMsg('Configuración guardada');
+      setTimeout(() => setZkSyncMsg(''), 4000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setZkConfigBusy(false);
     }
   };
 
@@ -605,12 +676,34 @@ export default function App() {
               </button>
             </li>
             {userRole === 'admin' && (
-              <li>
-                <label className="nav-upload-btn" title="Cargar otro archivo Excel">
-                  📁 Cambiar Archivo
-                  <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
-                </label>
-              </li>
+              <>
+                <li>
+                  <label className="nav-upload-btn" title="Cargar otro archivo Excel">
+                    📁 Cambiar Archivo
+                    <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
+                  </label>
+                </li>
+                <li>
+                  <button
+                    onClick={handleZkSync}
+                    disabled={zkSyncing || zkConfigBusy}
+                    className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-700 hover:text-white transition disabled:opacity-50"
+                    title="Descargar marcajes de los relojes ZKTeco"
+                  >
+                    {zkSyncing ? '⏳ Sincronizando…' : '🕐 Sincronizar Relojes'}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={openZkConfig}
+                    disabled={zkConfigBusy}
+                    className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-700 hover:text-white transition disabled:opacity-50"
+                    title="Configurar hora y equipos"
+                  >
+                    ⚙️ Relojes
+                  </button>
+                </li>
+              </>
             )}
             <li className="ml-auto">
               <button
@@ -631,6 +724,9 @@ export default function App() {
       </nav>
 
       <main className="nomina-container">
+        {zkSyncMsg && (
+          <div className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{zkSyncMsg}</div>
+        )}
         {error && <div className="error-state">{error}</div>}
         {loading && <div className="loading-state">Procesando y guardando en base de datos...</div>}
 
@@ -782,6 +878,17 @@ export default function App() {
           monthYear={selectedMonthYear || getYesterdayDateString().substring(0, 7)}
           onClose={() => setCalendarModalWorker(null)}
           shiftTemplates={shiftTemplates}
+        />
+      )}
+
+      {zkConfigOpen && (
+        <ZkConfigModal
+          isOpen={zkConfigOpen}
+          onClose={() => setZkConfigOpen(false)}
+          initial={zkConfig}
+          onSave={saveZkConfig}
+          onSync={handleZkSync}
+          busy={zkConfigBusy || zkSyncing}
         />
       )}
 

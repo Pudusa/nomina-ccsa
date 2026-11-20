@@ -6,6 +6,9 @@ const attendanceController = require('../controllers/attendance.controller.cjs')
 const { authenticateToken, requireRole } = require('../middleware/auth.middleware.cjs');
 
 router.post('/upload', authenticateToken, requireRole(['admin']), upload.single('file'), attendanceController.uploadAttendance);
+router.post('/attendance/zk-sync', authenticateToken, requireRole(['admin']), attendanceController.syncZkDevices);
+router.get('/attendance/zk/config', authenticateToken, requireRole(['admin']), attendanceController.getZkConfig);
+router.put('/attendance/zk/config', authenticateToken, requireRole(['admin']), attendanceController.saveZkConfig);
 router.get('/dates', authenticateToken, attendanceController.getDates);
 router.get('/attendance', authenticateToken, attendanceController.getAttendanceByDate);
 router.get('/attendance/range', authenticateToken, attendanceController.getAttendanceByRange);

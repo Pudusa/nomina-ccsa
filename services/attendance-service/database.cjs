@@ -34,6 +34,24 @@ db.exec(`
     UNIQUE(worker_no, date)
   );
 
+  CREATE TABLE IF NOT EXISTS zk_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    sync_hour INTEGER NOT NULL DEFAULT 0,
+    sync_minute INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_sync_date TEXT
+  );
+  INSERT OR IGNORE INTO zk_settings (id) VALUES (1);
+
+  CREATE TABLE IF NOT EXISTS zk_devices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    port INTEGER NOT NULL DEFAULT 4370,
+    comm_key INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1
+  );
+
   CREATE INDEX IF NOT EXISTS idx_attendance_worker_date ON attendance(worker_no, date);
   CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 `);

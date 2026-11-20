@@ -12,6 +12,7 @@ const db = require('./database.cjs');
 const attendanceRoutes = require('./routes/attendance.routes.cjs');
 const { authenticateToken, requireRole } = require('./middleware/auth.middleware.cjs');
 const { reloadAttendanceFiles } = require('./services/reload.service.cjs');
+const zkDevicesService = require('./services/zk-devices.service.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -106,6 +107,22 @@ setInterval(() => {
     }
   }
 }, 60 * 1000);
+
+// Sincronización con los relojes ZK: al arrancar y a la hora configurada en el panel admin.
+// La última fecha se guarda en SQLite, así sobrevive a reinicios del contenedor.
+async function runZkSync() {
+  const now = new Date();
+  if (!zkDevicesService.shouldRunScheduled(now, zkDevicesService.getSettings())) return;
+  zkDevicesService.markSyncedToday();
+  try {
+    const results = await zkDevicesService.syncAllDevices();
+    console.log('[ZK] Sincronización programada:', JSON.stringify(results));
+  } catch (err) {
+    console.error('[ZK] Error en la sincronización programada:', err);
+  }
+}
+runZkSync();
+setInterval(runZkSync, 60 * 1000);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(JSON.stringify({

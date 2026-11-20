@@ -2,6 +2,7 @@ const XLSX = require('xlsx');
 const db = require('../database.cjs');
 const attendanceService = require('../services/attendance.service.cjs');
 const internalApi = require('../services/internal-api.cjs');
+const zkDevicesService = require('../services/zk-devices.service.cjs');
 
 function uploadAttendance(req, res) {
   try {
@@ -435,11 +436,56 @@ function saveIncidentJustification(req, res) {
   }
 }
 
+async function syncZkDevices(req, res) {
+  try {
+    const results = await zkDevicesService.syncAllDevices();
+    res.json({ success: true, results });
+  } catch (err) {
+    console.error('Error al sincronizar relojes ZK:', err);
+    res.status(500).json({ error: 'Error al sincronizar los relojes ZK' });
+  }
+}
+
+function getZkConfig(req, res) {
+  try {
+    res.json(zkDevicesService.getConfig());
+  } catch (err) {
+    console.error('Error al leer la configuración ZK:', err);
+    res.status(500).json({ error: 'Error al leer la configuración de relojes' });
+  }
+}
+
+function isValidIp(ip) {
+  if (typeof ip !== 'string') return false;
+  const parts = ip.split('.');
+  return parts.length === 4 && parts.every(p => /^\d{1,3}$/.test(p) && Number(p) <= 255);
+}
+
+function saveZkConfig(req, res) {
+  const { hour, minute, enabled, devices } = req.body || {};
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 ||
+      !Number.isInteger(minute) || minute < 0 || minute > 59) {
+    return res.status(400).json({ error: 'La hora debe estar entre 0 y 23 y el minuto entre 0 y 59' });
+  }
+  if (!Array.isArray(devices) || devices.some(d => !d || !isValidIp(d.ip))) {
+    return res.status(400).json({ error: 'Cada reloj necesita una IP IPv4 válida' });
+  }
+  try {
+    res.json(zkDevicesService.saveConfig({ hour, minute, enabled, devices }));
+  } catch (err) {
+    console.error('Error al guardar la configuración ZK:', err);
+    res.status(500).json({ error: 'Error al guardar la configuración de relojes' });
+  }
+}
+
 module.exports = {
   getDates,
   getAttendanceByDate,
   getAttendanceByRange,
   uploadAttendance,
   getIncidents,
-  saveIncidentJustification
+  saveIncidentJustification,
+  syncZkDevices,
+  getZkConfig,
+  saveZkConfig
 };
