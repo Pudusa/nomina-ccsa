@@ -1,47 +1,3 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-
-function getWorkersDb() {
-  const possiblePaths = [
-    path.join(__dirname, '../../workers-service/workers.sqlite'),
-    path.join(__dirname, '../../../services/workers-service/workers.sqlite'),
-    path.join(__dirname, '../workers.sqlite'),
-    path.join(__dirname, '../../data/workers.sqlite'),
-    path.join(__dirname, '../../../data/workers.sqlite'),
-    path.join(__dirname, '../../data/nomina.db'),
-    path.join(__dirname, '../../../data/nomina.db')
-  ];
-  for (const p of possiblePaths) {
-    if (require('fs').existsSync(p)) {
-      try {
-        const db = new Database(p, { readonly: true });
-        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
-        if (tables.includes('shift_rules') || tables.includes('workers')) {
-          return db;
-        }
-        db.close();
-      } catch (e) {}
-    }
-  }
-  return null;
-}
-
-function getNominaDb() {
-  const nominaPath = process.env.NOMINA_DB_PATH || path.join(__dirname, '../../../data/nomina.db');
-  if (require('fs').existsSync(nominaPath)) {
-    return new Database(nominaPath, { readonly: true });
-  }
-  const altPath = path.join(__dirname, '../../data/nomina.db');
-  if (require('fs').existsSync(altPath)) {
-    return new Database(altPath, { readonly: true });
-  }
-  const localPath = path.join(__dirname, '../nomina.db');
-  if (require('fs').existsSync(localPath)) {
-    return new Database(localPath, { readonly: true });
-  }
-  return null;
-}
-
 function parseToDate(val, XLSX) {
     const rec = parseAttendanceRecord(val, XLSX);
     return rec ? rec.dateObj : null;
@@ -265,8 +221,6 @@ function importAttendanceRows(rows, XLSX, db) {
 }
 
 module.exports = {
-    getWorkersDb,
-    getNominaDb,
     parseToDate,
     parseAttendanceRecord,
     formatDateKey,

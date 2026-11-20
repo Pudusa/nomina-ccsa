@@ -1,7 +1,7 @@
 const XLSX = require('xlsx');
 const db = require('../database.cjs');
 const attendanceService = require('../services/attendance.service.cjs');
-const workersService = require('../services/workers.service.cjs');
+const internalApi = require('../services/internal-api.cjs');
 
 function uploadAttendance(req, res) {
   try {
@@ -38,7 +38,7 @@ function getDates(req, res) {
   }
 }
 
-function getAttendanceByDate(req, res) {
+async function getAttendanceByDate(req, res) {
   try {
     const { date } = req.query; // YYYY-MM-DD
     if (!date) {
@@ -46,31 +46,12 @@ function getAttendanceByDate(req, res) {
     }
 
     const dayRecords = db.prepare('SELECT * FROM attendance WHERE date = ?').all(date);
-    
-    const workersDb = attendanceService.getWorkersDb();
-    let workers = [];
-    let rules = [];
-    if (workersDb) {
-      try {
-        workers = workersDb.prepare('SELECT * FROM workers').all();
-        rules = workersDb.prepare('SELECT * FROM shift_rules').all();
-      } catch (e) {
-        console.error('Error querying workersDb:', e);
-      } finally {
-        workersDb.close();
-      }
-    }
+    const authHeader = req.headers.authorization;
+    const workerRows = await internalApi.getWorkers(authHeader);
 
     const workersMap = new Map();
-    workers.forEach((w) => {
-      const sNo = String(w.no);
-      workersMap.set(sNo, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: [] });
-    });
-    rules.forEach((r) => {
-      const sNo = String(r.worker_no);
-      if (workersMap.has(sNo)) {
-        workersMap.get(sNo).rules.push(r);
-      }
+    workerRows.forEach((w) => {
+      workersMap.set(w.no, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: w.rules || [] });
     });
 
     const workerTimesMap = new Map();
@@ -84,17 +65,14 @@ function getAttendanceByDate(req, res) {
       workerTimesMap.get(sNo).push(d);
     });
 
-    const nominaDb = attendanceService.getNominaDb();
     const yearMonth = date.substring(0, 7);
     const dateObj = new Date(date + 'T00:00:00');
     const dayNum = dateObj.getDate();
     const dayIndex = (dayNum - 1) % 31;
 
+    const { templates, distributions } = await internalApi.getShiftData(authHeader, yearMonth);
     const templatesMap = {};
-    if (nominaDb) {
-      const templates = nominaDb.prepare('SELECT id, name FROM shift_templates').all();
-      templates.forEach(t => { templatesMap[t.name] = t.id; });
-    }
+    templates.forEach(t => { templatesMap[t.name] = t.id; });
 
     const summaries = [];
     workersMap.forEach((workerObj, sNo) => {
@@ -122,26 +100,18 @@ function getAttendanceByDate(req, res) {
       let templateNumMarks = 2;
 
       const templateId = templatesMap[turno];
-      if (templateId && nominaDb) {
-        let dist = nominaDb.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(templateId, yearMonth);   
-        if (!dist) {
-          dist = nominaDb.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? AND year_month = ? ORDER BY id DESC').get(templateId, 'BASE');        
-        }
-        if (!dist) {
-          dist = nominaDb.prepare('SELECT days_json FROM shift_monthly_distributions WHERE shift_id = ? ORDER BY year_month DESC LIMIT 1').get(templateId);
-        }
-        if (dist && dist.days_json) {
-          try {
-            const daysArr = JSON.parse(dist.days_json);
-            const dayItem = daysArr.find(item => (Array.isArray(item) ? item[2] === dayIndex : item.dayIndex === dayIndex));
-            if (dayItem) {
-              const markDir = Array.isArray(dayItem) ? dayItem[1] : dayItem.markDirection;
-              if (markDir) templateMarkDir = markDir;
-              const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
-              if (numMarks !== undefined) templateNumMarks = Number(numMarks) || 2;
-            }
-          } catch (e) {}
-        }
+      const dist = distributions.find(d => d.shift_id === templateId);
+      if (dist && dist.days_json) {
+        try {
+          const daysArr = JSON.parse(dist.days_json);
+          const dayItem = daysArr.find(item => (Array.isArray(item) ? item[2] === dayIndex : item.dayIndex === dayIndex));
+          if (dayItem) {
+            const markDir = Array.isArray(dayItem) ? dayItem[1] : dayItem.markDirection;
+            if (markDir) templateMarkDir = markDir;
+            const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
+            if (numMarks !== undefined) templateNumMarks = Number(numMarks) || 2;
+          }
+        } catch (e) {}
       }
 
       let ruleFirstMarkDir = templateMarkDir;
@@ -172,8 +142,6 @@ function getAttendanceByDate(req, res) {
         totalPunches: cleanedTimes.length,
       });
     });
-
-    if (nominaDb) nominaDb.close();
 
     summaries.sort((a, b) => {
       const numA = Number(a.no);
@@ -214,7 +182,7 @@ function getAnomaliaCategoria(tipo) {
   return 'Ausencia';
 }
 
-function getIncidents(req, res) {
+async function getIncidents(req, res) {
   try {
     const { startDate, endDate, month } = req.query;
     
@@ -237,59 +205,20 @@ function getIncidents(req, res) {
       justificationsMap.set(`${j.worker_no}_${j.date}`, { tipo: j.tipo, descripcion: j.descripcion });
     });
 
-    const workersDb = attendanceService.getWorkersDb();
-    let workers = [];
-    let rules = [];
-    if (workersDb) {
-      try {
-        workers = workersDb.prepare('SELECT * FROM workers').all();
-        rules = workersDb.prepare('SELECT * FROM shift_rules').all();
-      } catch (e) {
-        console.error('Error querying workersDb:', e);
-      } finally {
-        workersDb.close();
-      }
-    }
-
+    const authHeader = req.headers.authorization;
+    const workerRows = await internalApi.getWorkers(authHeader);
     const workersMap = new Map();
-    workers.forEach((w) => {
-      const sNo = String(w.no);
-      workersMap.set(sNo, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: [] });
-    });
-    rules.forEach((r) => {
-      const sNo = String(r.worker_no);
-      if (workersMap.has(sNo)) {
-        workersMap.get(sNo).rules.push(r);
-      }
+    workerRows.forEach((w) => {
+      workersMap.set(w.no, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: w.rules || [] });
     });
 
-    const nominaDb = attendanceService.getNominaDb();
+    const { templates, distributions } = await internalApi.getShiftData(authHeader);
     const templatesMap = {};
-    const distsByShiftMonth = new Map();
-    const distsByShiftBase = new Map();
-    const distsByShiftFallback = new Map();
-
-    if (nominaDb) {
-      try {
-        const templates = nominaDb.prepare('SELECT id, name FROM shift_templates').all();
-        templates.forEach(t => { templatesMap[t.name] = t.id; });
-
-        const allDists = nominaDb.prepare('SELECT shift_id, year_month, days_json FROM shift_monthly_distributions').all();
-        allDists.forEach(d => {
-          distsByShiftMonth.set(`${d.shift_id}_${d.year_month}`, d.days_json);
-          if (d.year_month === 'BASE') {
-            distsByShiftBase.set(d.shift_id, d.days_json);
-          }
-          if (!distsByShiftFallback.has(d.shift_id)) {
-            distsByShiftFallback.set(d.shift_id, d.days_json);
-          }
-        });
-      } catch (e) {
-        console.error('Error pre-loading distributions:', e);
-      } finally {
-        nominaDb.close();
-      }
-    }
+    const distsByShift = new Map();
+    templates.forEach(t => { templatesMap[t.name] = t.id; });
+    distributions.forEach(d => {
+      if (!distsByShift.has(d.shift_id)) distsByShift.set(d.shift_id, d.days_json);
+    });
 
     let rangeStart = startDate;
     let rangeEnd = endDate;
@@ -371,9 +300,7 @@ function getIncidents(req, res) {
         let templateMarkDir = 'entrada';
         const templateId = templatesMap[turno];
         if (templateId) {
-          let daysJson = distsByShiftMonth.get(`${templateId}_${yearMonth}`) || 
-                         distsByShiftBase.get(templateId) || 
-                         distsByShiftFallback.get(templateId);
+          const daysJson = distsByShift.get(templateId);
           if (daysJson) {
             try {
               const parsed = typeof daysJson === 'string' ? JSON.parse(daysJson) : daysJson;

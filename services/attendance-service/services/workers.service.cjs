@@ -1,15 +1,4 @@
 const db = require('../database.cjs');
-const Database = require('better-sqlite3');
-const path = require('path');
-
-function getNominaDb() {
-  const dbPath = process.env.DB_PATH || path.join(__dirname, '../workers.sqlite');
-  const nominaPath = path.join(path.dirname(dbPath), 'nomina.db');
-  if (require('fs').existsSync(nominaPath)) {
-    return new Database(nominaPath, { readonly: true });
-  }
-  return null;
-}
 
 function formatDateKey(date) {
   const yyyy = date.getFullYear();
@@ -92,7 +81,6 @@ function getTurnoOnDate(defaultTurno, rules, dateStr) {
 }
 
 module.exports = {
-  getNominaDb,
   formatDateKey,
   filterDuplicatePunches,
   getDefaultTemplateName,
