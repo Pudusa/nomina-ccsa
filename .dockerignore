@@ -1,0 +1,11 @@
+node_modules
+dist
+data
+graphify-out
+.git
+.env
+*.log
+.gemini
+cap
+*.xls
+*.xlsx

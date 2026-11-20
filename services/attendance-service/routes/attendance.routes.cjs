@@ -11,5 +11,9 @@ router.get('/attendance', authenticateToken, attendanceController.getAttendanceB
 router.get('/attendance/range', authenticateToken, attendanceController.getAttendanceByRange);
 router.get('/incidents', authenticateToken, attendanceController.getIncidents);
 router.get('/attendance/incidents', authenticateToken, attendanceController.getIncidents);
+router.put('/incidents/justify', authenticateToken, requireRole(['admin', 'editor']), attendanceController.saveIncidentJustification);
+router.put('/attendance/incidents/justify', authenticateToken, requireRole(['admin', 'editor']), attendanceController.saveIncidentJustification);
+router.post('/incidents/justify', authenticateToken, requireRole(['admin', 'editor']), attendanceController.saveIncidentJustification);
+router.post('/attendance/incidents/justify', authenticateToken, requireRole(['admin', 'editor']), attendanceController.saveIncidentJustification);
 
 module.exports = router;

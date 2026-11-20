@@ -12,15 +12,25 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}): Pro
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  console.log(`[apiFetch] Request to: ${endpoint}`, { method: options.method || 'GET' });
 
-  if (res.status === 401 || res.status === 403) {
-    localStorage.removeItem('nomina_token');
-    window.dispatchEvent(new CustomEvent('nomina:unauthorized'));
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    console.log(`[apiFetch] Response from: ${endpoint} - Status: ${res.status}`);
+
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('nomina_token');
+      localStorage.removeItem('nomina_user');
+      window.dispatchEvent(new CustomEvent('nomina:unauthorized'));
+    }
+
+    return res;
+  } catch (err) {
+    console.error(`[apiFetch] Network error at ${endpoint}:`, err);
+    throw err;
   }
-
-  return res;
 }

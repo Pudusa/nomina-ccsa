@@ -69,6 +69,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
             <p className="text-xs text-slate-300">No. {worker.no || 'N/A'} • {monthNames[month - 1]} {year}</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-white text-2xl font-bold px-2 py-1 rounded-lg hover:bg-slate-800 transition"
           >
@@ -187,6 +188,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
 
         <div className="bg-slate-100 px-6 py-4 flex justify-end border-t border-slate-200">
           <button
+            type="button"
             onClick={onClose}
             className="px-5 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800 transition"
           >

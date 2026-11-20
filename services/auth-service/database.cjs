@@ -1,7 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const bcrypt = require('bcryptjs');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'auth.sqlite');
 
@@ -21,17 +20,27 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'operator'
+    role TEXT NOT NULL DEFAULT 'viewer',
+    activo INTEGER NOT NULL DEFAULT 1,
+    must_change_password INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
 
-// Seed default admin user if users table is empty
-const adminCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
-if (adminCount.count === 0) {
-  const defaultPasswordHash = bcrypt.hashSync('adminpassword123', 10);
-  db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)').run('admin', defaultPasswordHash, 'admin');
-  console.log('[Auth Microservice] Default admin user created in auth.sqlite (username: admin, password: adminpassword123)');
+// Migración para bases existentes creadas con el esquema anterior
+for (const col of [
+  "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'viewer'",
+  "ALTER TABLE users ADD COLUMN activo INTEGER DEFAULT 1",
+  "ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT (datetime('now'))",
+]) {
+  try { db.exec(col); } catch { /* la columna ya existe */ }
 }
+
+// Normalizar roles legacy
+try {
+  db.prepare("UPDATE users SET role='viewer' WHERE role NOT IN ('admin','editor','viewer')").run();
+} catch { /* sin roles legacy por normalizar */ }
 
 console.log('[Auth Microservice] Connected autonomously to dedicated auth database at:', dbPath);
 

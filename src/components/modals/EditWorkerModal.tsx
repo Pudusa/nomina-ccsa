@@ -106,6 +106,7 @@ export function EditWorkerModal({
                     {r.end_date && r.end_date !== r.start_date ? ` al ${formatDisplayDate(r.end_date)}` : ''})
                   </span>
                   <button
+                    type="button"
                     className="btn-delete-rule"
                     onClick={() => onDeleteRule(r.id)}
                   >
@@ -118,10 +119,10 @@ export function EditWorkerModal({
         )}
 
         <div className="modal-actions">
-          <button className="btn-cancel" onClick={onClose}>
+          <button type="button" className="btn-cancel" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn-save" onClick={onSave}>
+          <button type="button" className="btn-save" onClick={onSave}>
             Guardar en BD
           </button>
         </div>

@@ -6,8 +6,8 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('adminpassword123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +70,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
               onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              placeholder="admin"
+              placeholder="Usuario"
             />
           </div>
 
@@ -104,10 +104,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-400">Credenciales por defecto: <span className="font-medium text-slate-600">admin</span> / <span className="font-medium text-slate-600">adminpassword123</span></p>
-        </div>
       </div>
     </div>
   );

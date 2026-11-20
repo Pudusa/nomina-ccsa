@@ -4,7 +4,8 @@
   "description": "Microservicio de Autenticación para Nomina CCSA (Patrón Strangler Fig)",
   "main": "server.cjs",
   "scripts": {
-    "start": "node server.cjs"
+    "start": "node server.cjs",
+    "seed": "node seed.cjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
