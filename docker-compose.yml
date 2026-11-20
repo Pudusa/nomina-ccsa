@@ -60,6 +60,9 @@ services:
       - PORT=3003
       - DB_PATH=/app/data/attendance.sqlite
       - JWT_SECRET=${JWT_SECRET}
+      # node-zklib entrega la hora en UTC; el contenedor necesita la misma zona
+      # del reloj para que los marcajes y la hora del panel sean los correctos.
+      - TZ=America/Santo_Domingo
     env_file:
       - .env
     volumes:

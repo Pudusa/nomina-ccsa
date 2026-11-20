@@ -16,8 +16,8 @@ function nowString(now = new Date()) {
   return `${dateKey(now)} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
 }
 
-// recordTime llega en ISO UTC; se convierte a hora local del servidor, que es
-// la del reloj. Así se conserva la hora exacta sin conversión artificial.
+// node-zklib devuelve recordTime en ISO UTC; se convierte a la hora local del
+// contenedor (TZ fija en docker-compose), que es la que marca el reloj.
 function localDateTime(recordTime) {
   const d = new Date(recordTime);
   if (isNaN(d.getTime())) return null;
