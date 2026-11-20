@@ -9,7 +9,9 @@ if (!fs.existsSync(dbDir)) {
 }
 
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
+// DELETE en vez de WAL: los bind mounts de Windows/Docker Desktop no soportan
+// de forma fiable el archivo de memoria compartida (-shm) que exige WAL.
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = NORMAL');
 db.pragma('busy_timeout = 5000');
 
