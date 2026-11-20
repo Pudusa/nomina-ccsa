@@ -7,8 +7,8 @@ interface TrabajadoresViewProps {
   uniqueWorkers: UniqueWorker[];
   filteredWorkers: UniqueWorker[];
   paginatedWorkers: UniqueWorker[];
-  workerSearchTerm: string;
-  setWorkerSearchTerm: (term: string) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
   selectedTurno: string;
   setSelectedTurno: (turno: string) => void;
   selectedDate: string;
@@ -22,14 +22,15 @@ interface TrabajadoresViewProps {
   sortField: string;
   sortDir: 'asc' | 'desc';
   shiftTemplates: Record<string, DayConfig[]>;
+  canEdit: boolean;
 }
 
 export function TrabajadoresView({
   uniqueWorkers,
   filteredWorkers,
   paginatedWorkers: _paginatedWorkers,
-  workerSearchTerm,
-  setWorkerSearchTerm,
+  searchTerm,
+  setSearchTerm,
   selectedTurno,
   setSelectedTurno,
   selectedDate,
@@ -42,6 +43,7 @@ export function TrabajadoresView({
   onSort,
   sortField,
   sortDir,
+  canEdit,
 }: TrabajadoresViewProps) {
   const [selectedDepartamento, setSelectedDepartamento] = useState<string>('ALL');
 
@@ -98,9 +100,9 @@ export function TrabajadoresView({
               <input
                 type="text"
                 placeholder="Buscar trabajador..."
-                value={workerSearchTerm}
+                value={searchTerm}
                 onChange={(e) => {
-                  setWorkerSearchTerm(e.target.value);
+                  setSearchTerm(e.target.value);
                   setWorkerCurrentPage(1);
                 }}
                 className="w-full bg-transparent text-slate-800 font-semibold text-base outline-none placeholder:text-slate-400"
@@ -187,13 +189,15 @@ export function TrabajadoresView({
                           >
                             📅 Calendario
                           </button>
-                          <button
-                            onClick={() => onEditWorker(worker, currentTurno)}
-                            className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
-                            title="Configurar turnos y periodos"
-                          >
-                            ✏️ Editar
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => onEditWorker(worker, currentTurno)}
+                              className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
+                              title="Configurar turnos y periodos"
+                            >
+                              ✏️ Editar
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

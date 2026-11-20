@@ -178,7 +178,7 @@ function classifyPunches(times, turno, ruleFirstMarkDir, numMarcas = 2) {
                 const t1 = times[1];
                 const timeDec1 = t1.getHours() + t1.getMinutes() / 60;
                 if (timeDec1 < 12.5) entradaMañana = formatDateTime(t1);
-                else salidaTarde = formatDateTime(t1);
+                else entradaTarde = formatDateTime(t1);
             }
         }
     }

@@ -16,13 +16,23 @@ import { WorkerCalendarModal } from './components/modals/WorkerCalendarModal';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
+  const [userRole, setUserRole] = useState<string>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('nomina_user') || '{}').role || '';
+    } catch {
+      return '';
+    }
+  });
+  const canEdit = userRole === 'admin' || userRole === 'editor';
   const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleUnauthorized = () => {
+      console.warn('[App] Received nomina:unauthorized event. Setting isAuthenticated to false.');
       setIsAuthenticated(false);
+      setUserRole('');
     };
     window.addEventListener('nomina:unauthorized', handleUnauthorized);
     return () => {
@@ -36,11 +46,11 @@ export default function App() {
   const [uniqueWorkers, setUniqueWorkers] = useState<UniqueWorker[]>([]);
 
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [workerSearchTerm, setWorkerSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [selectedAttendanceShiftFilter, setSelectedAttendanceShiftFilter] = useState<string>('ALL');
   const [selectedAttendanceStatusFilter, setSelectedAttendanceStatusFilter] = useState<string>('ALL');
 
-  const [workerSearchTerm, setWorkerSearchTerm] = useState<string>('');
   const [selectedTurno, setSelectedTurno] = useState<string>('ALL');
   const [workerCurrentPage, setWorkerCurrentPage] = useState<number>(1);
 
@@ -593,18 +603,21 @@ export default function App() {
                 ⚠️ Incidencias
               </button>
             </li>
-            <li>
-              <label className="nav-upload-btn" title="Cargar otro archivo Excel">
-                📁 Cambiar Archivo
-                <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
-              </label>
-            </li>
+            {userRole === 'admin' && (
+              <li>
+                <label className="nav-upload-btn" title="Cargar otro archivo Excel">
+                  📁 Cambiar Archivo
+                  <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </li>
+            )}
             <li className="ml-auto">
               <button
                 onClick={() => {
                   localStorage.removeItem('nomina_token');
                   localStorage.removeItem('nomina_user');
                   setIsAuthenticated(false);
+                  setUserRole('');
                 }}
                 className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-700 hover:text-white transition flex items-center gap-1.5"
                 title="Cerrar sesión"
@@ -625,10 +638,14 @@ export default function App() {
             <div className="upload-card">
               <h2>📁 Base de Datos de Asistencia</h2>
               <p>Sube tu archivo Excel (.xls o .xlsx). Los datos se guardarán de forma persistente en la base de datos SQLite del servidor.</p>
-              <label className="upload-dropzone">
-                <span>📂 Seleccionar Archivo Excel</span>
-                <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} />
-              </label>
+              {userRole === 'admin' ? (
+                <label className="upload-dropzone">
+                  <span>📂 Seleccionar Archivo Excel</span>
+                  <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} />
+                </label>
+              ) : (
+                <p className="text-sm text-slate-500">No tienes permisos para cargar archivos. Solicita a un administrador que lo haga.</p>
+              )}
             </div>
           </div>
         )}
@@ -663,8 +680,8 @@ export default function App() {
             uniqueWorkers={uniqueWorkers}
             filteredWorkers={sortedWorkers}
             paginatedWorkers={paginatedWorkers}
-            workerSearchTerm={workerSearchTerm}
-            setWorkerSearchTerm={setWorkerSearchTerm}
+            searchTerm={workerSearchTerm}
+            setSearchTerm={setWorkerSearchTerm}
             selectedTurno={selectedTurno}
             setSelectedTurno={setSelectedTurno}
             selectedDate={selectedDate}
@@ -676,6 +693,7 @@ export default function App() {
             sortField={workerSortField}
             sortDir={workerSortDir}
             shiftTemplates={shiftTemplates}
+            canEdit={canEdit}
             onOpenCalendar={(worker) => setCalendarModalWorker(worker)}
             onEditWorker={(worker, currentTurno) => {
               setEditingWorker(worker);
@@ -707,11 +725,16 @@ export default function App() {
               setModalMarkDirection(config.markDirection);
               setModalNumMarcas(config.numMarcas !== undefined ? config.numMarcas : 2);
             }}
+            canEdit={canEdit}
           />
         )}
 
         {isDataLoaded && !loading && currentView === 'incidencias' && (
-          <IncidenciasView />
+          <IncidenciasView
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            canEdit={canEdit}
+          />
         )}
       </main>
 
@@ -765,6 +788,11 @@ export default function App() {
       {!isAuthenticated && (
         <LoginModal
           onLoginSuccess={() => {
+            try {
+              setUserRole(JSON.parse(localStorage.getItem('nomina_user') || '{}').role || '');
+            } catch {
+              setUserRole('');
+            }
             setIsAuthenticated(true);
             refreshData();
           }}

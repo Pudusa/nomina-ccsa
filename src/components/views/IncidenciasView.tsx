@@ -11,6 +11,7 @@ interface Anomalia {
   tipo: string;
   fecha: string;
   descripcion?: string;
+  marcas?: string[];
 }
 
 interface WorkerIncidents {
@@ -125,8 +126,13 @@ const getJustificationOptionsForAnomalia = (anom: Anomalia) => {
   ];
 };
 
-export function IncidenciasView() {
-  const [searchTerm, setSearchTerm] = useState('');
+interface IncidenciasViewProps {
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  canEdit: boolean;
+}
+
+export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: IncidenciasViewProps) {
   const [selectedCategoria, setSelectedCategoria] = useState('ALL');
   const [selectedMotivo, setSelectedMotivo] = useState('ALL');
   const [dateMode, setDateMode] = useState<string>('mes');
@@ -149,6 +155,7 @@ export function IncidenciasView() {
   } | null>(null);
   const [newTipo, setNewTipo] = useState('Falta injustificada');
   const [newDescripcion, setNewDescripcion] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchIncidents = async () => {
     setLoading(true);
@@ -257,29 +264,46 @@ export function IncidenciasView() {
     setNewDescripcion(anom.descripcion || '');
   };
 
-  const handleSaveJustification = () => {
+  const handleSaveJustification = async () => {
     if (!justifyingItem) return;
     const { workerNo, anomalia } = justifyingItem;
     
-    // Update local state
-    setIncidentsData(prev => prev.map(w => {
-      if (w.no !== workerNo) return w;
-      return {
-        ...w,
-        anomalias: w.anomalias.map(a => {
-          if (a.id !== anomalia.id) return a;
-          return { ...a, tipo: newTipo, descripcion: newDescripcion };
+    try {
+      const res = await apiFetch('/api/attendance/incidents/justify', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workerNo,
+          date: anomalia.fecha,
+          tipo: newTipo,
+          descripcion: newDescripcion
         })
-      };
-    }));
-
-    setJustifyingItem(null);
+      });
+      if (res.ok) {
+        await fetchIncidents();
+        setJustifyingItem(null);
+        setSuccessMessage('El cambio quedó realizado');
+        setTimeout(() => setSuccessMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error('Failed to save justification on server:', err);
+    }
   };
 
   const currentJustificationOptions = justifyingItem ? getJustificationOptionsForAnomalia(justifyingItem.anomalia) : [];
 
   return (
     <div className="space-y-6">
+      {successMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-sm font-bold shadow-sm flex items-center justify-between animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <span>✅</span>
+            <span>{successMessage}</span>
+          </div>
+          <button onClick={() => setSuccessMessage(null)} className="text-emerald-600 hover:text-emerald-900 font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
       {/* 1. Panel de Métricas de Anomalías */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -432,15 +456,21 @@ export function IncidenciasView() {
                       ) : null}
                       <td className="p-3">
                         <button
-                          onClick={() => handleOpenJustify(worker.no, worker.nombre, anom)}
-                          className={`inline-block text-center w-48 px-3 py-1 rounded-full text-sm font-bold shadow-sm cursor-pointer transition transform hover:scale-105 ${getBadgeStyle(anom.tipo)}`}
-                          title={anom.descripcion ? `📝 Nota: ${anom.descripcion}` : `Click para justificar / clasificar motivo (${anom.tipo})`}
+                          type="button"
+                          onClick={canEdit ? () => handleOpenJustify(worker.no, worker.nombre, anom) : undefined}
+                          className={`inline-block text-center w-48 px-3 py-1 rounded-full text-sm font-bold shadow-sm ${canEdit ? 'cursor-pointer transition transform hover:scale-105' : 'cursor-default'} ${getBadgeStyle(anom.tipo)}`}
+                          title={anom.descripcion ? `📝 Nota: ${anom.descripcion}` : (canEdit ? `Click para justificar / clasificar motivo (${anom.tipo})` : anom.tipo)}
                         >
                           {anom.tipo}
                         </button>
                         {anom.descripcion && (
                           <span className="ml-2 text-xs text-slate-500 italic block mt-0.5">
                             Nota: {anom.descripcion}
+                          </span>
+                        )}
+                        {anom.marcas && anom.marcas.length > 0 && (
+                          <span className="text-xs font-semibold text-purple-700 block mt-1">
+                            🕒 Marcas: {anom.marcas.join(', ')}
                           </span>
                         )}
                       </td>
@@ -465,6 +495,7 @@ export function IncidenciasView() {
         </div>
         <div className="pagination-bar flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
             disabled={currentPage === 1}
             className="px-3 py-1 bg-white border border-slate-300 rounded text-xs font-bold disabled:opacity-50 cursor-pointer"
@@ -475,6 +506,7 @@ export function IncidenciasView() {
             Página {currentPage} de {totalPages}
           </span>
           <button
+            type="button"
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
             disabled={currentPage === totalPages}
             className="px-3 py-1 bg-white border border-slate-300 rounded text-xs font-bold disabled:opacity-50 cursor-pointer"
@@ -494,6 +526,7 @@ export function IncidenciasView() {
                 <p className="text-xs text-slate-400">{justifyingItem.workerName} (No. {justifyingItem.workerNo})</p>
               </div>
               <button
+                type="button"
                 onClick={() => setJustifyingItem(null)}
                 className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
               >
@@ -543,12 +576,14 @@ export function IncidenciasView() {
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
+                  type="button"
                   onClick={() => setJustifyingItem(null)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold cursor-pointer transition"
                 >
                   Cancelar
                 </button>
                 <button
+                  type="button"
                   onClick={handleSaveJustification}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/25 cursor-pointer transition"
                 >

@@ -19,6 +19,7 @@ interface TurnosViewProps {
     totalMonthHours: string;
   };
   onEditDay: (dayIndex: number, dayNum: number, config: DayConfig) => void;
+  canEdit: boolean;
 }
 
 export function TurnosView({
@@ -32,6 +33,7 @@ export function TurnosView({
   onOpenCreateShift,
   calendarData,
   onEditDay,
+  canEdit,
 }: TurnosViewProps) {
   const shiftOptions = Object.keys(shiftTemplates).length === 0
     ? [{ label: 'Sin turno', value: '' }]
@@ -72,7 +74,7 @@ export function TurnosView({
               options={shiftOptions}
               width="w-[220px]"
             />
-            {selectedShiftTemplate && selectedShiftTemplate !== 'Sin turno' && (
+            {canEdit && selectedShiftTemplate && selectedShiftTemplate !== 'Sin turno' && (
               <button
                 className="btn-delete-rule px-3 py-3 text-xs font-bold rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors mt-5"
                 onClick={() => onDeleteShift(selectedShiftTemplate)}
@@ -84,21 +86,23 @@ export function TurnosView({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            className="btn-save"
-            onClick={onSaveAllChanges}
-            title="Guardar todos los cambios de este turno y mes"
-          >
-            💾 Guardar Cambios
-          </button>
-          <button
-            className="btn-save"
-            onClick={onOpenCreateShift}
-          >
-            ➕ Crear Nuevo Turno
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-4">
+            <button
+              className="btn-save"
+              onClick={onSaveAllChanges}
+              title="Guardar todos los cambios de este turno y mes"
+            >
+              💾 Guardar Cambios
+            </button>
+            <button
+              className="btn-save"
+              onClick={onOpenCreateShift}
+            >
+              ➕ Crear Nuevo Turno
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="legend-bar">
@@ -143,8 +147,8 @@ export function TurnosView({
                   <div
                     key={d.dayNum}
                     className={cardClass}
-                    onClick={() => onEditDay(d.dayIndex, d.dayNum, { hours: d.hours, markDirection: d.markDirection, numMarcas: d.numMarcas })}
-                    title="Haz clic para editar este día"
+                    onClick={canEdit ? () => onEditDay(d.dayIndex, d.dayNum, { hours: d.hours, markDirection: d.markDirection, numMarcas: d.numMarcas }) : undefined}
+                    title={canEdit ? 'Haz clic para editar este día' : undefined}
                   >
                     <div className="card-day-header !p-0 !bg-transparent flex justify-between items-center text-xs font-bold">
                       <span className="day-number text-sm">{d.dayNum}</span>

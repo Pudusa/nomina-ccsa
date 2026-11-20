@@ -41,5 +41,17 @@ describe('Attendance Service Unit Tests (Microservice)', () => {
             expect(result.entradaMañana).toBeDefined();
             expect(result.salidaTarde).toBeDefined();
         });
+
+        it('clasifica la entrada de un turno de salida primero como entradaTarde', () => {
+            // Turno nocturno: salida 08:00 y entrada 14:00 (salida primero).
+            const times = [
+                new Date(2026, 10, 29, 8, 0, 0),
+                new Date(2026, 10, 29, 14, 0, 0)
+            ];
+            const result = classifyPunches(times, 'Turno 2', 'salida', 2);
+            expect(result.salidaMañana).toBeDefined();
+            expect(result.entradaTarde).toBeDefined();
+            expect(result.salidaTarde).toBeNull();
+        });
     });
 });
