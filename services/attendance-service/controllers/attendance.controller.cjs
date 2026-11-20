@@ -229,8 +229,12 @@ async function getIncidents(req, res) {
         const lastDay = new Date(y || 2026, m || 10, 0).getDate();
         rangeEnd = `${month}-${String(lastDay).padStart(2, '0')}`;
       } else {
-        rangeStart = '2026-10-01';
-        rangeEnd = '2026-10-31';
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        rangeStart = `${y}-${m}-01`;
+        const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+        rangeEnd = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
       }
     }
 
@@ -297,7 +301,6 @@ async function getIncidents(req, res) {
 
         let hoursVal = '8';
         let expectedNumMarcas = 2;
-        let templateMarkDir = 'entrada';
         const templateId = templatesMap[turno];
         if (templateId) {
           const daysJson = distsByShift.get(templateId);
@@ -310,26 +313,12 @@ async function getIncidents(req, res) {
                 if (Array.isArray(dayItem)) {
                   hoursVal = dayItem[0] !== undefined ? String(dayItem[0]) : '8';
                   expectedNumMarcas = dayItem[3] !== undefined ? Number(dayItem[3]) : 2;
-                  if (dayItem[1]) templateMarkDir = dayItem[1];
                 } else {
                   hoursVal = String(dayItem.hours !== undefined ? dayItem.hours : '8');
                   expectedNumMarcas = dayItem.numMarks !== undefined ? Number(dayItem.numMarks) : 2;
-                  if (dayItem.markDirection) templateMarkDir = dayItem.markDirection;
                 }
               }
             } catch (e) {}
-          }
-        }
-
-        let ruleFirstMarkDir = templateMarkDir;
-        for (const r of workerRules) {
-          if (r.type === 'total' && date >= r.start_date) {
-            if (r.first_mark_direction) ruleFirstMarkDir = r.first_mark_direction;
-          } else if (r.type === 'parcial') {
-            const end = r.end_date || r.start_date;
-            if (date >= r.start_date && date <= end) {
-              if (r.first_mark_direction) ruleFirstMarkDir = r.first_mark_direction;
-            }
           }
         }
 
