@@ -14,6 +14,7 @@ import { EditDayModal } from './components/modals/EditDayModal';
 import { EditWorkerModal } from './components/modals/EditWorkerModal';
 import { WorkerCalendarModal } from './components/modals/WorkerCalendarModal';
 import { ZkView } from './components/views/ZkView';
+import { BajaWorkerModal } from './components/modals/BajaWorkerModal';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
@@ -71,6 +72,8 @@ export default function App() {
   const [modalNumMarcas, setModalNumMarcas] = useState<number>(2);
 
   const [editingWorker, setEditingWorker] = useState<UniqueWorker | null>(null);
+  const [bajaWorker, setBajaWorker] = useState<UniqueWorker | null>(null);
+  const [bajaBusy, setBajaBusy] = useState<boolean>(false);
   const [calendarModalWorker, setCalendarModalWorker] = useState<UniqueWorker | null>(null);
   const [newTurnoValue, setNewTurnoValue] = useState<string>('Matutino');
   const [editType, setEditType] = useState<'total' | 'parcial'>('total');
@@ -410,6 +413,27 @@ export default function App() {
     }
   };
 
+  const handleSaveBaja = async (fechaBaja: string | null) => {
+    if (!bajaWorker) return;
+    setBajaBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/workers/${bajaWorker.no}/baja`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fechaBaja }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar la baja');
+      setBajaWorker(null);
+      await refreshData(selectedDate);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBajaBusy(false);
+    }
+  };
+
   const handleSaveDayModal = async () => {
     if (!editingDay) return;
     const parsedHours = modalDayHours === 'P' || modalDayHours === 'p' ? 'P' : parseFloat(modalDayHours) || 0;
@@ -706,6 +730,7 @@ export default function App() {
             shiftTemplates={shiftTemplates}
             canEdit={canEdit}
             onOpenCalendar={(worker) => setCalendarModalWorker(worker)}
+            onBajaWorker={(worker) => setBajaWorker(worker)}
             onEditWorker={(worker, currentTurno) => {
               setEditingWorker(worker);
               const templateKeys = Object.keys(shiftTemplates);
@@ -788,6 +813,15 @@ export default function App() {
         onSave={handleSaveTurnoRule}
         onDeleteRule={handleDeleteRule}
       />
+
+      {bajaWorker && (
+        <BajaWorkerModal
+          worker={bajaWorker}
+          onClose={() => setBajaWorker(null)}
+          onSave={handleSaveBaja}
+          busy={bajaBusy}
+        />
+      )}
 
       {calendarModalWorker && (
         <WorkerCalendarModal

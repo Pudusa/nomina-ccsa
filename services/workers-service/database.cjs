@@ -40,6 +40,12 @@ try {
   // Column already exists
 }
 
+try {
+  db.exec(`ALTER TABLE workers ADD COLUMN fecha_baja TEXT`);
+} catch (e) {
+  // Column already exists
+}
+
 console.log('[Workers Microservice] Connected autonomously to dedicated workers database at:', dbPath);
 
 module.exports = db;

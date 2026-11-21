@@ -13,8 +13,11 @@ async function getJson(url, authHeader) {
   return res.json();
 }
 
-async function getWorkers(authHeader) {
-  const data = await getJson(`${WORKERS_URL}/api/workers`, authHeader);
+async function getWorkers(authHeader, asOf) {
+  const url = asOf
+    ? `${WORKERS_URL}/api/workers?asOf=${encodeURIComponent(asOf)}`
+    : `${WORKERS_URL}/api/workers`;
+  const data = await getJson(url, authHeader);
   // GET /api/workers devuelve [{ no, nombre, defaultTurno, departamento, rules: [...] }]
   return data.map((w) => ({
     no: String(w.no),

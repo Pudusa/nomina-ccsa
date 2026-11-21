@@ -34,6 +34,8 @@ export interface UniqueWorker {
   no: string;
   nombre: string;
   defaultTurno: string;
+  departamento?: string;
+  fechaBaja?: string | null;
   rules: ShiftRule[];
 }
 

@@ -59,6 +59,7 @@ router.all('/workers', proxyHandler);
 router.all('/workers/stats', proxyHandler);
 router.all('/workers/calendar', proxyHandler);
 router.all('/workers/:no/rules', proxyHandler);
+router.all('/workers/:no/baja', proxyHandler);
 router.all('/rules/:id', proxyHandler);
 
 module.exports = router;

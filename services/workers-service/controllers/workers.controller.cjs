@@ -63,7 +63,14 @@ function getWorkers(req, res) {
   try {
     workersService.cleanupExpiredRules();
 
-    const workers = db.prepare('SELECT * FROM workers ORDER BY CAST(no AS INTEGER) ASC, no ASC').all();
+    const asOf = req.query.asOf || null;
+    const workers = asOf
+      ? db.prepare(`
+          SELECT * FROM workers
+          WHERE fecha_baja IS NULL OR fecha_baja = '' OR fecha_baja > ?
+          ORDER BY CAST(no AS INTEGER) ASC, no ASC
+        `).all(asOf)
+      : db.prepare('SELECT * FROM workers ORDER BY CAST(no AS INTEGER) ASC, no ASC').all();
     const rules = db.prepare('SELECT * FROM shift_rules').all();
 
     const rulesMap = {};
@@ -79,6 +86,7 @@ function getWorkers(req, res) {
       nombre: w.nombre,
       defaultTurno: w.default_turno || defaultFallback,
       departamento: w.departamento || 'General',
+      fechaBaja: w.fecha_baja || null,
       rules: rulesMap[w.no] || [],
     }));
 
@@ -278,9 +286,27 @@ function deleteRule(req, res) {
   }
 }
 
+function setWorkerBaja(req, res) {
+  const { no } = req.params;
+  const { fechaBaja } = req.body || {};
+  if (fechaBaja !== null && !/^\d{4}-\d{2}-\d{2}$/.test(fechaBaja || '')) {
+    return res.status(400).json({ error: 'fechaBaja debe ser YYYY-MM-DD o null' });
+  }
+  try {
+    const info = db.prepare('UPDATE workers SET fecha_baja = ? WHERE no = ?')
+      .run(fechaBaja || null, no);
+    if (!info.changes) return res.status(404).json({ error: 'Trabajador no encontrado' });
+    res.json({ message: 'Baja registrada con éxito.', no, fechaBaja: fechaBaja || null });
+  } catch (err) {
+    console.error('[workers-service] Error in setWorkerBaja:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   getWorkers,
   getWorkerCalendar,
   addWorkerRule,
   deleteRule,
+  setWorkerBaja,
 };

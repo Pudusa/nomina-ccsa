@@ -18,6 +18,7 @@ interface TrabajadoresViewProps {
   workerTotalPages: number;
   onEditWorker: (worker: UniqueWorker, currentTurno: string) => void;
   onOpenCalendar: (worker: UniqueWorker) => void;
+  onBajaWorker: (worker: UniqueWorker) => void;
   onSort: (field: string) => void;
   sortField: string;
   sortDir: 'asc' | 'desc';
@@ -40,6 +41,7 @@ export function TrabajadoresView({
   workerTotalPages: _workerTotalPages,
   onEditWorker,
   onOpenCalendar,
+  onBajaWorker,
   onSort,
   sortField,
   sortDir,
@@ -190,13 +192,22 @@ export function TrabajadoresView({
                             📅 Calendario
                           </button>
                           {canEdit && (
-                            <button
-                              onClick={() => onEditWorker(worker, currentTurno)}
-                              className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
-                              title="Configurar turnos y periodos"
-                            >
-                              ✏️ Editar
-                            </button>
+                            <>
+                              <button
+                                onClick={() => onEditWorker(worker, currentTurno)}
+                                className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
+                                title="Configurar turnos y periodos"
+                              >
+                                ✏️ Editar
+                              </button>
+                              <button
+                                onClick={() => onBajaWorker(worker)}
+                                className="px-3 py-1.5 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition shadow-sm text-center"
+                                title={worker.fechaBaja ? `Dado de baja el ${worker.fechaBaja}` : 'Dar de baja desde una fecha'}
+                              >
+                                {worker.fechaBaja ? '🔴 Baja' : '🚫 Dar de baja'}
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

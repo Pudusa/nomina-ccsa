@@ -48,7 +48,7 @@ async function getAttendanceByDate(req, res) {
 
     const dayRecords = db.prepare('SELECT * FROM attendance WHERE date = ?').all(date);
     const authHeader = req.headers.authorization;
-    const workerRows = await internalApi.getWorkers(authHeader);
+    const workerRows = await internalApi.getWorkers(authHeader, date);
 
     const workersMap = new Map();
     workerRows.forEach((w) => {
@@ -207,12 +207,6 @@ async function getIncidents(req, res) {
     });
 
     const authHeader = req.headers.authorization;
-    const workerRows = await internalApi.getWorkers(authHeader);
-    const workersMap = new Map();
-    workerRows.forEach((w) => {
-      workersMap.set(w.no, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: w.rules || [] });
-    });
-
     let rangeStart = startDate;
     let rangeEnd = endDate;
     if (!rangeStart || !rangeEnd) {
@@ -230,6 +224,12 @@ async function getIncidents(req, res) {
         rangeEnd = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
       }
     }
+
+    const workerRows = await internalApi.getWorkers(authHeader, rangeEnd);
+    const workersMap = new Map();
+    workerRows.forEach((w) => {
+      workersMap.set(w.no, { ...w, defaultTurno: w.default_turno || 'Sin turno', rules: w.rules || [] });
+    });
 
     const datesInRange = [];
     let curr = new Date(rangeStart + 'T00:00:00');
