@@ -8,7 +8,11 @@ export interface WorkerDaySummary {
   entradaTarde?: string | null;
   salidaTarde?: string | null;
   turno: string;
-  isRest?: boolean;
+  status?: 'descanso' | 'pendiente' | 'ausente' | 'incompleto' | 'presente' | 'fuera_de_turno';
+  isRestDay?: boolean;
+  expectedNumMarcas?: number;
+  workedHours?: number;
+  overtimeHours?: number;
   numMarcas?: number;
 }
 

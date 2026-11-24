@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y sqlite3 && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/services/workers-service/node_modules ./services/workers-service/node_modules
 COPY services/workers-service ./services/workers-service
+COPY services/shared ./services/shared
 
 WORKDIR /app/services/workers-service
 

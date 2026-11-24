@@ -1,7 +1,7 @@
 import type { WorkerDaySummary } from '../../types';
 import { VisualDatePicker } from '../VisualDatePicker';
 import { CustomDropdown } from '../CustomDropdown';
-import { formatDisplayDate, formatTime, getTodayDateString } from '../../utils/dateUtils';
+import { formatDisplayDate, formatTime } from '../../utils/dateUtils';
 
 interface AsistenciasViewProps {
   selectedDate: string;
@@ -46,9 +46,6 @@ export function AsistenciasView({
   sortField,
   sortDir,
 }: AsistenciasViewProps) {
-  const todayStr = getTodayDateString();
-  const isTodayOrFuture = selectedDate >= todayStr;
-
   return (
     <>
       <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -154,14 +151,8 @@ export function AsistenciasView({
           <tbody>
             {paginatedSummaries.length > 0 ? (
               paginatedSummaries.map((worker, idx) => {
-                const hasMark = Boolean(
-                  worker.marca1 ||
-                  worker.marca2 ||
-                  worker.entradaMañana ||
-                  worker.salidaMañana ||
-                  worker.entradaTarde ||
-                  worker.salidaTarde
-                );
+                const status = worker.status;
+                const withMarks = status === 'presente' || status === 'incompleto' || status === 'fuera_de_turno';
 
                 return (
                   <tr key={idx} className="hover:bg-slate-50 transition">
@@ -170,7 +161,7 @@ export function AsistenciasView({
                     <td>
                       <span className="badge-turno">{worker.turno}</span>
                     </td>
-                    {hasMark ? (
+                    {withMarks ? (
                       <>
                         <td>
                           <div className="flex flex-col justify-center min-h-[50px] gap-1">
@@ -211,13 +202,13 @@ export function AsistenciasView({
                           </div>
                         </td>
                       </>
-                    ) : worker.isRest ? (
+                    ) : status === 'descanso' ? (
                       <td colSpan={2} className="text-center py-4">
                         <span className="badge-rest-attendance">
                           🛏️ Descanso
                         </span>
                       </td>
-                    ) : isTodayOrFuture ? (
+                    ) : status === 'pendiente' ? (
                       <td colSpan={2} className="text-center py-4">
                         <span className="badge-missing">
                           —

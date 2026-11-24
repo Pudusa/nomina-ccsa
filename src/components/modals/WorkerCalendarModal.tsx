@@ -3,13 +3,33 @@ import type { UniqueWorker } from '../../types';
 import { apiFetch } from '../../utils/api';
 import { VisualMonthPicker } from '../VisualMonthPicker';
 
+type AttendanceStatus = 'descanso' | 'pendiente' | 'ausente' | 'incompleto' | 'presente' | 'fuera_de_turno';
+
 interface DayInfo {
-  status: 'verde' | 'amarillo' | 'rojo' | 'gris' | 'fuera_de_turno';
+  status: AttendanceStatus;
+  color?: 'verde' | 'amarillo' | 'rojo' | 'gris' | 'fuera_de_turno';
   turno: string;
   expectedHours: number;
   times: string[];
   workedHours: number;
   overtimeHours: number;
+}
+
+const STATUS_APPEARANCE: Record<AttendanceStatus, { bg: string; label: string }> = {
+  presente: { bg: 'bg-emerald-500 text-white border-emerald-600 shadow-sm', label: '✓ Presente' },
+  incompleto: { bg: 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm', label: '⚠ 1 Marca' },
+  ausente: { bg: 'bg-rose-500 text-white border-rose-600 shadow-sm', label: '✗ Ausente' },
+  descanso: { bg: 'bg-slate-200 text-slate-600 border-slate-300', label: '• Descanso' },
+  pendiente: { bg: 'bg-slate-100 text-slate-500 border-slate-200', label: '• Pendiente' },
+  fuera_de_turno: { bg: 'bg-purple-600 text-white border-purple-700 shadow-sm', label: '⚡ Fuera Turno' },
+};
+
+function toStatus(value: string): AttendanceStatus {
+  const legacy: Record<string, AttendanceStatus> = {
+    verde: 'presente', amarillo: 'incompleto', rojo: 'ausente',
+    gris: 'pendiente', fuera_de_turno: 'fuera_de_turno',
+  };
+  return (legacy[value] || value) as AttendanceStatus;
 }
 
 interface WorkerCalendarModalProps {
@@ -90,7 +110,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
             <div className="flex flex-wrap gap-3 text-xs font-bold items-center text-slate-800">
               <div className="flex items-center gap-1.5">
                 <span className="w-3.5 h-3.5 rounded-full bg-emerald-600 inline-block"></span>
-                <span>Presente (Vino)</span>
+                <span>Presente</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3.5 h-3.5 rounded-full bg-amber-500 inline-block"></span>
@@ -98,7 +118,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3.5 h-3.5 rounded-full bg-rose-600 inline-block"></span>
-                <span>Ausente (Faltó)</span>
+                <span>Ausente</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3.5 h-3.5 rounded-full bg-purple-600 inline-block"></span>
@@ -106,7 +126,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3.5 h-3.5 rounded-full bg-slate-400 inline-block"></span>
-                <span>Libre / Futuro</span>
+                <span>Descanso / Pendiente</span>
               </div>
             </div>
           </div>
@@ -134,14 +154,10 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
                   const dayNum = i + 1;
                   const dStr = String(dayNum).padStart(2, '0');
                   const dateStr = `${currentMonthYear}-${dStr}`;
-                  const dayInfo = dailyStatus[dateStr] || { status: 'gris', turno: '', expectedHours: 8, times: [], workedHours: 0, overtimeHours: 0 };
-                  const status = dayInfo.status;
-
-                  let bgClass = 'bg-slate-100 text-slate-500 border-slate-200';
-                  if (status === 'verde') bgClass = 'bg-emerald-500 text-white border-emerald-600 shadow-sm';
-                  else if (status === 'amarillo') bgClass = 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm';
-                  else if (status === 'rojo') bgClass = 'bg-rose-500 text-white border-rose-600 shadow-sm';
-                  else if (status === 'fuera_de_turno') bgClass = 'bg-purple-600 text-white border-purple-700 shadow-sm';
+                  const raw = dailyStatus[dateStr] || { status: 'pendiente', turno: '', expectedHours: 8, times: [], workedHours: 0, overtimeHours: 0 };
+                  const status = toStatus(raw.status);
+                  const appearance = STATUS_APPEARANCE[status] || STATUS_APPEARANCE.pendiente;
+                  const bgClass = appearance.bg;
 
                   return (
                     <div
@@ -155,26 +171,22 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
 
                       <div className="text-center space-y-0.5">
                         <div className="text-[11px] font-extrabold uppercase tracking-tight">
-                          {status === 'verde' && '✓ Presente'}
-                          {status === 'amarillo' && '⚠ 1 Marca'}
-                          {status === 'rojo' && '✗ Ausente'}
-                          {status === 'gris' && '• Libre'}
-                          {status === 'fuera_de_turno' && '⚡ Fuera Turno'}
+                          {appearance.label}
                         </div>
 
                         {/* Punch times */}
-                        {dayInfo.times && dayInfo.times.length > 0 ? (
-                          <div className="text-[10px] font-mono opacity-95 bg-black/10 rounded px-1 py-0.5 truncate" title={dayInfo.times.join(' - ')}>
-                            {dayInfo.times.length === 1 ? dayInfo.times[0] : `${dayInfo.times[0]} → ${dayInfo.times[dayInfo.times.length - 1]}`}
+                        {raw.times && raw.times.length > 0 ? (
+                          <div className="text-[10px] font-mono opacity-95 bg-black/10 rounded px-1 py-0.5 truncate" title={raw.times.join(' - ')}>
+                            {raw.times.length === 1 ? raw.times[0] : `${raw.times[0]} → ${raw.times[raw.times.length - 1]}`}
                           </div>
                         ) : (
                           <div className="text-[10px] opacity-60 italic">Sin marcas</div>
                         )}
 
                         {/* Overtime */}
-                        {dayInfo.overtimeHours > 0 && (
+                        {raw.overtimeHours > 0 && (
                           <div className="text-[10px] font-bold text-amber-200 bg-amber-900/40 rounded px-1">
-                            +{dayInfo.overtimeHours}h Extra
+                            +{raw.overtimeHours}h Extra
                           </div>
                         )}
                       </div>

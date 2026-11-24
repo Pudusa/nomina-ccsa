@@ -95,10 +95,14 @@ describe('getWorkerCalendar con datos reales (solo lectura) — 10 casos', () =>
         expect(dia).toHaveProperty('workedHours');
         expect(dia).toHaveProperty('overtimeHours');
     });
-    it('7: estados son del conjunto permitido', async () => {
+    it('7: estados canónicos y color legacy en el rango permitido', async () => {
         const body = (await get(worker.no, monthYear)).body;
-        const permitidos = ['verde', 'rojo', 'amarillo', 'gris', 'fuera_de_turno'];
-        Object.values(body).forEach(d => expect(permitidos).toContain(d.status));
+        const estados = ['descanso', 'pendiente', 'ausente', 'incompleto', 'presente', 'fuera_de_turno'];
+        const colores = ['verde', 'rojo', 'amarillo', 'gris', 'fuera_de_turno'];
+        Object.values(body).forEach(d => {
+            expect(estados).toContain(d.status);
+            expect(colores).toContain(d.color);
+        });
     });
     it('8: times es array en todos los dias', async () => {
         const body = (await get(worker.no, monthYear)).body;
@@ -108,8 +112,9 @@ describe('getWorkerCalendar con datos reales (solo lectura) — 10 casos', () =>
         const body = (await get(worker.no, monthYear)).body;
         expect(Object.values(body).some(d => d.expectedHours > 0)).toBe(true);
     });
-    it('10: mes sin datos devuelve dias en gris', async () => {
+    it('10: mes sin datos devuelve dias pendientes en gris', async () => {
         const body = (await get(worker.no, '2099-01')).body;
-        expect(body['2099-01-01'].status).toBe('gris');
+        expect(body['2099-01-01'].status).toBe('pendiente');
+        expect(body['2099-01-01'].color).toBe('gris');
     });
 });

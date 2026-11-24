@@ -1,5 +1,6 @@
 const db = require('../database.cjs');
 const workersService = require('../services/workers.service.cjs');
+const attendanceStatus = require('../../shared/attendance-status.cjs');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -163,77 +164,32 @@ async function getWorkerCalendar(req, res) {
         expectedNumMarcas = dayItem.numMarcas !== undefined ? Number(dayItem.numMarcas) : 2;
       }
 
-      const dateObj = new Date(dateStr + 'T00:00:00');
-      const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
-      const isSunday = (dayOfWeek === 0);
-      const isSaturday = (dayOfWeek === 6);
-
-      const turnoLower = (turno || '').trim().toLowerCase();
-      const isTurnoRest = turnoLower.includes('descanso') || 
-                          turnoLower.includes('libre') || 
-                          turnoLower.includes('domingo') || 
-                          turnoLower.includes('festivo') || 
-                          turnoLower.includes('feriado') || 
-                          turnoLower.includes('vacaciones') || 
-                          turnoLower.includes('incapacidad') || 
-                          turnoLower.includes('permiso') ||
-                          turnoLower === 'd' || 
-                          turnoLower === 'p' || 
-                          turnoLower === '0';
-      const isSinTurno = !turno || turnoLower === '' || turnoLower === 'sin turno';
-      const hStr = String(hoursVal || '').trim().toLowerCase();
-      const isRestDay = isSinTurno || isTurnoRest || isSunday || (isSaturday && (hStr === '8' || hStr === '' || hStr === '0')) || hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '' || expectedNumMarcas === 0;
-
       const times = attendanceByDate[dateStr] || [];
       const validTimes = workersService.filterDuplicatePunches(times);
 
-      let formattedTimes = validTimes.map(t => {
+      const formattedTimes = validTimes.map(t => {
         const h = String(t.getHours()).padStart(2, '0');
         const m = String(t.getMinutes()).padStart(2, '0');
         return `${h}:${m}`;
       });
 
-      let workedHours = 0;
-      if (validTimes.length >= 2) {
-        const diffMs = validTimes[validTimes.length - 1].getTime() - validTimes[0].getTime();
-        workedHours = Math.max(0, diffMs / (1000 * 60 * 60));
-      }
-
-      const numExpected = parseFloat(hoursVal) || 8;
-      let overtimeHours = 0;
-      if (!isRestDay && workedHours > numExpected) {
-        overtimeHours = Math.round((workedHours - numExpected) * 10) / 10;
-      }
-
-      let status = 'gris';
-
-      if (dateStr > yesterdayStr) {
-        status = 'gris';
-      } else if (isRestDay) {
-        if (validTimes.length > 0) {
-          status = 'fuera_de_turno';
-        } else {
-          status = 'gris';
-        }
-      } else {
-        if (validTimes.length === 0) {
-          status = 'rojo';
-        } else if (validTimes.length === 1) {
-          status = (expectedNumMarcas === 1) ? 'verde' : 'amarillo';
-        } else if (validTimes.length >= 2 && expectedNumMarcas === 1) {
-          status = 'fuera_de_turno';
-        } else {
-          status = 'verde';
-        }
-      }
+      const evaluated = attendanceStatus.evaluateAttendanceDay({
+        date: dateStr,
+        turno,
+        hours: hoursVal,
+        numMarcas: expectedNumMarcas,
+        marcas: validTimes,
+        today: attendanceStatus.todayDateString(),
+      });
 
       statusMap[dateStr] = {
-        status,
+        status: evaluated.status,
+        color: attendanceStatus.statusToWorkerStatus(evaluated.status),
         turno,
-        expectedHours: numExpected,
+        expectedHours: evaluated.expectedHours,
         times: formattedTimes,
-        workedHours: Math.round(workedHours * 10) / 10,
-        overtimeHours
+        workedHours: evaluated.workedHours,
+        overtimeHours: evaluated.overtimeHours,
       };
     }
 

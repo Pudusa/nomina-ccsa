@@ -223,31 +223,8 @@ export default function App() {
     return Array.from(turnosSet);
   }, [uniqueWorkers, shiftTemplates, selectedDate]);
 
-  const workerSummariesWithRest = useMemo(() => {
-    if (!selectedDate) return workerSummaries;
-    const [yearStr, monthStr, dayStr] = selectedDate.split('-');
-    if (!yearStr || !monthStr || !dayStr) return workerSummaries;
-    const dayNum = parseInt(dayStr, 10);
-    const dayIndex = (dayNum - 1) % 31;
-
-    return workerSummaries.map((w) => {
-      const turno = w.turno;
-      const template = shiftTemplates[turno];
-      let isRest = false;
-      const isSinTurno = !turno || (turno || '').trim() === '' || (turno || '').trim().toLowerCase() === 'sin turno';
-      if (isSinTurno) {
-        isRest = true;
-      } else if (template && template[dayIndex]) {
-        const hoursVal = template[dayIndex].hours;
-        const hStr = String(hoursVal || '').trim().toLowerCase();
-        isRest = hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '';
-      }
-      return { ...w, isRest };
-    });
-  }, [workerSummaries, shiftTemplates, selectedDate]);
-
   const filteredSummaries = useMemo(() => {
-    return workerSummariesWithRest.filter((w) => {
+    return workerSummaries.filter((w) => {
       const name = w.nombre.toLowerCase();
       const no = w.no.toLowerCase();
       const query = searchTerm.toLowerCase();
@@ -255,18 +232,18 @@ export default function App() {
 
       const matchesShift = selectedAttendanceShiftFilter === 'ALL' || w.turno === selectedAttendanceShiftFilter;
 
-      const hasMark = Boolean(w.marca1 || w.marca2 || w.entradaMañana || w.salidaMañana || w.entradaTarde || w.salidaTarde);
+      const status = w.status;
       const matchesAttendance =
         selectedAttendanceStatusFilter === 'ALL' ||
-        (selectedAttendanceStatusFilter === 'PRESENT' && hasMark) ||
-        (selectedAttendanceStatusFilter === 'ABSENT' && !hasMark && !w.isRest);
+        (selectedAttendanceStatusFilter === 'PRESENT' && (status === 'presente' || status === 'incompleto')) ||
+        (selectedAttendanceStatusFilter === 'ABSENT' && status === 'ausente');
 
       return matchesSearch && matchesShift && matchesAttendance;
     });
-  }, [workerSummariesWithRest, searchTerm, selectedAttendanceShiftFilter, selectedAttendanceStatusFilter]);
+  }, [workerSummaries, searchTerm, selectedAttendanceShiftFilter, selectedAttendanceStatusFilter]);
 
   const scheduledWorkersCount = useMemo(() => {
-    return filteredSummaries.filter((w) => !w.isRest).length;
+    return filteredSummaries.filter((w) => w.status !== 'descanso').length;
   }, [filteredSummaries]);
 
   const filteredWorkers = useMemo(() => {

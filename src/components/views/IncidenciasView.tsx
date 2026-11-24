@@ -29,7 +29,9 @@ const formatDateToDDMMAAAA = (dateStr: string) => {
   return dateStr;
 };
 
-const getBadgeStyle = (tipo: string) => {
+const getBadgeStyle = (tipo: string, categoria?: string) => {
+  if (categoria === 'Fuera de turno') return 'bg-purple-100 text-purple-800 border border-purple-300';
+  if (categoria === 'Falta marca') return 'bg-amber-100 text-amber-800 border border-amber-300';
   const t = tipo.toLowerCase();
   if (t.includes('incapacidad')) return 'bg-rose-100 text-rose-800 border border-rose-300';
   if (t.includes('permiso c/goce')) return 'bg-pink-100 text-pink-800 border border-pink-300';
@@ -458,7 +460,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
                         <button
                           type="button"
                           onClick={canEdit ? () => handleOpenJustify(worker.no, worker.nombre, anom) : undefined}
-                          className={`inline-block text-center w-48 px-3 py-1 rounded-full text-sm font-bold shadow-sm ${canEdit ? 'cursor-pointer transition transform hover:scale-105' : 'cursor-default'} ${getBadgeStyle(anom.tipo)}`}
+                          className={`inline-block text-center w-48 px-3 py-1 rounded-full text-sm font-bold shadow-sm ${canEdit ? 'cursor-pointer transition transform hover:scale-105' : 'cursor-default'} ${getBadgeStyle(anom.tipo, anom.categoria)}`}
                           title={anom.descripcion ? `📝 Nota: ${anom.descripcion}` : (canEdit ? `Click para justificar / clasificar motivo (${anom.tipo})` : anom.tipo)}
                         >
                           {anom.tipo}

@@ -3,6 +3,7 @@ const db = require('../database.cjs');
 const attendanceService = require('../services/attendance.service.cjs');
 const internalApi = require('../services/internal-api.cjs');
 const zkDevicesService = require('../services/zk-devices.service.cjs');
+const attendanceStatus = require('../../shared/attendance-status.cjs');
 
 function uploadAttendance(req, res) {
   try {
@@ -99,6 +100,7 @@ async function getAttendanceByDate(req, res) {
 
       let templateMarkDir = 'entrada';
       let templateNumMarks = 2;
+      let templateHours = '8';
 
       const templateId = templatesMap[turno];
       const dist = distributions.find(d => d.shift_id === templateId);
@@ -111,6 +113,8 @@ async function getAttendanceByDate(req, res) {
             if (markDir) templateMarkDir = markDir;
             const numMarks = Array.isArray(dayItem) ? dayItem[3] : dayItem.numMarcas;
             if (numMarks !== undefined) templateNumMarks = Number(numMarks) || 2;
+            const dayHours = Array.isArray(dayItem) ? dayItem[0] : dayItem.hours;
+            if (dayHours !== undefined) templateHours = dayHours;
           }
         } catch (e) {}
       }
@@ -129,6 +133,14 @@ async function getAttendanceByDate(req, res) {
 
       const cleanedTimes = attendanceService.filterDuplicatePunches(times);
       const classified = attendanceService.classifyPunches(cleanedTimes, turno, ruleFirstMarkDir, templateNumMarks);
+      const evaluated = attendanceStatus.evaluateAttendanceDay({
+        date,
+        turno,
+        hours: templateHours,
+        numMarcas: templateNumMarks,
+        marcas: cleanedTimes,
+        today: attendanceStatus.todayDateString(),
+      });
 
       summaries.push({
         no: sNo,
@@ -141,6 +153,11 @@ async function getAttendanceByDate(req, res) {
         salidaTarde: classified.salidaTarde,
         turno,
         totalPunches: cleanedTimes.length,
+        status: evaluated.status,
+        isRestDay: evaluated.isRestDay,
+        expectedNumMarcas: evaluated.expectedNumMarcas,
+        workedHours: evaluated.workedHours,
+        overtimeHours: evaluated.overtimeHours,
       });
     });
 
@@ -327,32 +344,12 @@ async function getIncidents(req, res) {
           }
         }
 
-        const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
-        const isSunday = (dayOfWeek === 0);
-        const isSaturday = (dayOfWeek === 6);
-
-        const turnoLower = (turno || '').trim().toLowerCase();
-        const isTurnoRest = turnoLower.includes('descanso') || 
-                            turnoLower.includes('libre') || 
-                            turnoLower.includes('domingo') || 
-                            turnoLower.includes('festivo') || 
-                            turnoLower.includes('feriado') || 
-                            turnoLower.includes('vacaciones') || 
-                            turnoLower.includes('incapacidad') || 
-                            turnoLower.includes('permiso') ||
-                            turnoLower === 'd' || 
-                            turnoLower === 'p' || 
-                            turnoLower === '0';
-        const isSinTurno = !turno || turnoLower === '' || turnoLower === 'sin turno';
-        const hStr = String(hoursVal || '').trim().toLowerCase();
-        const isRestDay = isSinTurno || isTurnoRest || isSunday || (isSaturday && (hStr === '8' || hStr === '' || hStr === '0')) || hStr === 'p' || hStr === 'd' || hStr === 'descanso' || hStr === 'libre' || hStr === '0' || hStr === '0.00' || hStr === '' || expectedNumMarcas === 0;
-
         const key = `${workerNo}_${date}`;
         const recordEntry = workerDateMap.get(key);
         const rawTimes = recordEntry && recordEntry.times ? recordEntry.times : [];
         const filteredTimes = attendanceService.filterDuplicatePunches(rawTimes);
 
-        const pushAnomaly = (defaultTipo) => {
+        const pushAnomaly = (defaultTipo, forcedCategoria) => {
           if (!incidentsByWorker.has(workerNo)) {
             incidentsByWorker.set(workerNo, { no: workerNo, nombre, anomalias: [] });
           }
@@ -360,7 +357,7 @@ async function getIncidents(req, res) {
           const savedJ = justificationsMap.get(jKey);
           const tipo = savedJ ? savedJ.tipo : defaultTipo;
           const descripcion = savedJ ? savedJ.descripcion : '';
-          const categoria = getAnomaliaCategoria(tipo);
+          const categoria = forcedCategoria || getAnomaliaCategoria(tipo);
 
           const marcas = filteredTimes.map(t => {
             const hh = String(t.getHours()).padStart(2, '0');
@@ -378,24 +375,17 @@ async function getIncidents(req, res) {
           });
         };
 
-        if (isRestDay) {
-          if (filteredTimes.length > 0) {
-            pushAnomaly('Fuera de turno');
-          }
-        } else {
-          if (filteredTimes.length === 0) {
-            pushAnomaly('Falta injustificada');
-          } else if (filteredTimes.length === 1) {
-            if (expectedNumMarcas === 2) {
-              const hour = filteredTimes[0].getHours();
-              const falta = (hour < 12) ? 'Falta salida injustificada' : 'Falta entrada injustificada';
-              pushAnomaly(falta);
-            }
-          } else if (filteredTimes.length >= 2) {
-            if (expectedNumMarcas === 1) {
-              pushAnomaly('Fuera de turno');
-            }
-          }
+        const evaluated = attendanceStatus.evaluateAttendanceDay({
+          date,
+          turno,
+          hours: hoursVal,
+          numMarcas: expectedNumMarcas,
+          marcas: filteredTimes,
+          today: attendanceStatus.todayDateString(),
+        });
+
+        if (evaluated.incidencia) {
+          pushAnomaly(evaluated.incidencia, evaluated.categoria);
         }
       });
     });
