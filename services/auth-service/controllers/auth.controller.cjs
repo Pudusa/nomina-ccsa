@@ -1,13 +1,16 @@
 const authService = require('../services/auth.service.cjs');
 
-function login(req, res) {
+async function login(req, res) {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Se requiere usuario y contraseña.' });
     }
 
-    const user = authService.verifyUser(username, password);
+    const verified = authService.verifyUser(username, password);
+    // Manejar tanto si verifyUser retorna una Promise como si es síncrono
+    const user = verified instanceof Promise ? await verified : verified;
+
     if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas.' });
     }
@@ -15,7 +18,7 @@ function login(req, res) {
     const token = authService.generateToken(user);
 
     res.json({
-      message: 'Autenticación exitosa (Microservice)',
+      message: 'Autenticación exitosa (Microservice con AD/LDAP support)',
       token,
       user
     });
