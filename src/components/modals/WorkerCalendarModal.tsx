@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from '../Icon';
 import type { UniqueWorker } from '../../types';
 import { apiFetch } from '../../utils/api';
 import { VisualMonthPicker } from '../VisualMonthPicker';
@@ -85,7 +86,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold">Calendario Detallado de Asistencia: {worker.nombre}</h2>
+            <h2 className="text-xl font-bold"><Icon name="calendar_month" /> Calendario Detallado de Asistencia: {worker.nombre}</h2>
             <p className="text-xs text-slate-300">No. {worker.no || 'N/A'} • {monthNames[month - 1]} {year}</p>
           </div>
           <button

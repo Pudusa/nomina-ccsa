@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../Icon';
 import { VisualDatePicker } from '../VisualDatePicker';
 import type { UniqueWorker } from '../../types';
 
@@ -15,7 +16,7 @@ export function BajaWorkerModal({ worker, onClose, onSave, busy }: BajaWorkerMod
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Dar de baja a {worker.nombre}</h2>
+        <h2><Icon name="person_off" /> Dar de baja a {worker.nombre}</h2>
         <p className="modal-subtitle">
           El trabajador dejará de aparecer desde la fecha elegida. Su historial anterior se conserva.
         </p>

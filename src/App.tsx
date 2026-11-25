@@ -15,6 +15,8 @@ import { EditWorkerModal } from './components/modals/EditWorkerModal';
 import { WorkerCalendarModal } from './components/modals/WorkerCalendarModal';
 import { ZkView } from './components/views/ZkView';
 import { BajaWorkerModal } from './components/modals/BajaWorkerModal';
+import { DashboardView } from './components/views/DashboardView';
+import { Icon } from './components/Icon';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
@@ -80,7 +82,7 @@ export default function App() {
   const [ruleStartDate, setRuleStartDate] = useState<string>('');
   const [ruleEndDate, setRuleEndDate] = useState<string>('');
 
-  const [currentView, setCurrentView] = useState<'asistencias' | 'trabajadores' | 'turnos' | 'incidencias' | 'relojes'>('asistencias');
+  const [currentView, setCurrentView] = useState<'resumen' | 'asistencias' | 'trabajadores' | 'turnos' | 'incidencias' | 'relojes'>('resumen');
 
 
 
@@ -569,11 +571,19 @@ export default function App() {
     <div className="app-layout">
       <nav className="navbar">
         <div className="navbar-brand">
-          <span className="brand-icon">🗄️</span>
+          <span className="brand-icon"><Icon name="domain" /></span>
           <span className="brand-title">Sistema de Nómina</span>
         </div>
         {isDataLoaded && (
           <ul className="navbar-nav">
+            <li>
+              <button
+                className={`nav-link ${currentView === 'resumen' ? 'active' : ''}`}
+                onClick={() => setCurrentView('resumen')}
+              >
+                Resumen
+              </button>
+            </li>
             <li>
               <button
                 className={`nav-link ${currentView === 'asistencias' ? 'active' : ''}`}
@@ -603,14 +613,14 @@ export default function App() {
                 className={`nav-link ${currentView === 'incidencias' ? 'active' : ''}`}
                 onClick={() => setCurrentView('incidencias')}
               >
-                ⚠️ Incidencias
+                <Icon name="warning" /> Incidencias
               </button>
             </li>
             {userRole === 'admin' && (
               <>
                 <li>
                   <label className="nav-upload-btn" title="Cargar otro archivo Excel">
-                    📁 Cambiar Archivo
+                    <Icon name="folder_open" /> Cambiar Archivo
                     <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} className="hidden" />
                   </label>
                 </li>
@@ -619,7 +629,7 @@ export default function App() {
                     className={`nav-link ${currentView === 'relojes' ? 'active' : ''}`}
                     onClick={() => setCurrentView('relojes')}
                   >
-                    🕐 Relojes
+                    <Icon name="schedule" /> Relojes
                   </button>
                 </li>
               </>
@@ -635,7 +645,7 @@ export default function App() {
                 className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-700 hover:text-white transition flex items-center gap-1.5"
                 title="Cerrar sesión"
               >
-                🚪 Cerrar Sesión
+                <Icon name="logout" /> Cerrar Sesión
               </button>
             </li>
           </ul>
@@ -649,11 +659,11 @@ export default function App() {
         {!isDataLoaded && !loading && (
           <div className="upload-screen">
             <div className="upload-card">
-              <h2>📁 Base de Datos de Asistencia</h2>
+              <h2><Icon name="database" /> Base de Datos de Asistencia</h2>
               <p>Sube tu archivo Excel (.xls o .xlsx). Los datos se guardarán de forma persistente en la base de datos SQLite del servidor.</p>
               {userRole === 'admin' ? (
                 <label className="upload-dropzone">
-                  <span>📂 Seleccionar Archivo Excel</span>
+                  <span><Icon name="file_open" /> Seleccionar Archivo Excel</span>
                   <input type="file" accept=".xls,.xlsx" onChange={handleFileUpload} />
                 </label>
               ) : (
@@ -661,6 +671,10 @@ export default function App() {
               )}
             </div>
           </div>
+        )}
+
+        {isDataLoaded && !loading && currentView === 'resumen' && (
+          <DashboardView selectedDate={selectedDate} userRole={userRole} />
         )}
 
         {isDataLoaded && !loading && currentView === 'asistencias' && (

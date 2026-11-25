@@ -1,4 +1,5 @@
 import type { UniqueWorker } from '../../types';
+import { Icon } from '../Icon';
 import { VisualDatePicker } from '../VisualDatePicker';
 import { formatDisplayDate } from '../../utils/dateUtils';
 
@@ -38,7 +39,7 @@ export function EditWorkerModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Configurar Turno (BD)</h2>
+        <h2><Icon name="edit" /> Configurar Turno (BD)</h2>
         <p className="modal-subtitle">
           Trabajador: <strong>{editingWorker.nombre}</strong> (No. {editingWorker.no})
         </p>

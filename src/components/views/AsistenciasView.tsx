@@ -2,6 +2,7 @@ import type { WorkerDaySummary } from '../../types';
 import { VisualDatePicker } from '../VisualDatePicker';
 import { CustomDropdown } from '../CustomDropdown';
 import { formatDisplayDate, formatTime } from '../../utils/dateUtils';
+import { Icon } from '../Icon';
 
 interface AsistenciasViewProps {
   selectedDate: string;
@@ -50,21 +51,21 @@ export function AsistenciasView({
     <>
       <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Día Seleccionado</h3>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2"><Icon name="calendar_today" /> Día Seleccionado</h3>
           <p className="metric-value text-xl font-extrabold text-sky-600">
             {selectedDate ? formatDisplayDate(selectedDate) : 'Ninguno'}
           </p>
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Trabajadores Registrados</h3>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2"><Icon name="groups" /> Trabajadores Registrados</h3>
           <p className="metric-value text-xl font-extrabold text-slate-900">{filteredSummaries.length}</p>
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Programados a Trabajar</h3>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2"><Icon name="calendar_view_day" /> Programados a Trabajar</h3>
           <p className="metric-value text-xl font-extrabold text-emerald-600">{scheduledWorkersCount}</p>
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Filtrados</h3>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2"><Icon name="filter_list" /> Filtrados</h3>
           <p className="metric-value text-xl font-extrabold text-slate-900">{filteredSummaries.length}</p>
         </div>
       </div>
@@ -85,13 +86,13 @@ export function AsistenciasView({
               }}
               className="w-full bg-transparent text-slate-800 font-semibold text-base outline-none placeholder:text-slate-400"
             />
-            <span className="text-slate-400 text-sm ml-2">🔍</span>
+            <Icon name="search" className="asist-search-icon" />
           </div>
         </div>
 
         <div className="w-[220px]">
           <CustomDropdown
-            label="🔄 Filtrar por Turno:"
+            label="Filtrar por Turno:"
             value={selectedAttendanceShiftFilter}
             onChange={(val) => {
               setSelectedAttendanceShiftFilter(val);
@@ -107,7 +108,7 @@ export function AsistenciasView({
 
         <div className="w-[220px]">
           <CustomDropdown
-            label="👤 Estado de Asistencia:"
+            label="Estado de Asistencia:"
             value={selectedAttendanceStatusFilter}
             onChange={(val) => {
               setSelectedAttendanceStatusFilter(val);
@@ -124,7 +125,7 @@ export function AsistenciasView({
 
         <div className="w-[220px] ml-auto">
           <VisualDatePicker
-            label="📅 Día de Asistencia:"
+            label="Día de Asistencia:"
             value={selectedDate}
             availableDates={availableDates}
             onChange={(dateStr) => {
@@ -167,12 +168,12 @@ export function AsistenciasView({
                           <div className="flex flex-col justify-center min-h-[50px] gap-1">
                             {worker.entradaMañana && (
                               <span className="badge-dept" title="Entrada por la Mañana">
-                                ☀️ {formatTime(worker.entradaMañana)}
+                                <Icon name="light_mode" /> {formatTime(worker.entradaMañana)}
                               </span>
                             )}
                             {worker.entradaTarde && (
                               <span className="badge-dept" title="Entrada por la Tarde">
-                                🌙 {formatTime(worker.entradaTarde)}
+                                <Icon name="dark_mode" /> {formatTime(worker.entradaTarde)}
                               </span>
                             )}
                             {!worker.entradaMañana && !worker.entradaTarde && (
@@ -186,12 +187,12 @@ export function AsistenciasView({
                           <div className="flex flex-col justify-center min-h-[50px] gap-1">
                             {worker.salidaMañana && (
                               <span className="badge-verif" title="Salida por la Mañana">
-                                ☀️ {formatTime(worker.salidaMañana)}
+                                <Icon name="light_mode" /> {formatTime(worker.salidaMañana)}
                               </span>
                             )}
                             {worker.salidaTarde && (
                               <span className="badge-verif" title="Salida por la Tarde">
-                                🌙 {formatTime(worker.salidaTarde)}
+                                <Icon name="dark_mode" /> {formatTime(worker.salidaTarde)}
                               </span>
                             )}
                             {!worker.salidaMañana && !worker.salidaTarde && (
@@ -205,7 +206,7 @@ export function AsistenciasView({
                     ) : status === 'descanso' ? (
                       <td colSpan={2} className="text-center py-4">
                         <span className="badge-rest-attendance">
-                          🛏️ Descanso
+                          <Icon name="bed" /> Descanso
                         </span>
                       </td>
                     ) : status === 'pendiente' ? (
@@ -217,7 +218,7 @@ export function AsistenciasView({
                     ) : (
                       <td colSpan={2} className="text-center py-4">
                         <span className="badge-absent">
-                          ❌ Ausente
+                          <Icon name="person_off" /> Ausente
                         </span>
                       </td>
                     )}

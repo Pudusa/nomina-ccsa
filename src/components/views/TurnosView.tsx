@@ -1,6 +1,7 @@
 import { VisualMonthPicker } from '../VisualMonthPicker';
 import { CustomDropdown } from '../CustomDropdown';
 import type { DayConfig } from '../../types';
+import { Icon } from '../Icon';
 
 interface TurnosViewProps {
   selectedMonthYear: string;
@@ -44,15 +45,15 @@ export function TurnosView({
       <div className="metrics-grid mb-6">
         <div className="metric-card">
           <h3>Horas (Días 1 - 15: 15 días)</h3>
-          <p className="metric-value">{calendarData.hours1_15} hrs</p>
+          <p className="metric-value"><Icon name="schedule" /> {calendarData.hours1_15} hrs</p>
         </div>
         <div className="metric-card">
           <h3>Horas (Días 16 - {calendarData.daysInMonth}: {calendarData.daysInMonth - 15} días)</h3>
-          <p className="metric-value">{calendarData.hours16_31} hrs</p>
+          <p className="metric-value"><Icon name="schedule" /> {calendarData.hours16_31} hrs</p>
         </div>
         <div className="metric-card">
           <h3>Total Horas al Mes ({calendarData.daysInMonth} días)</h3>
-          <p className="metric-value text-emerald-400">{calendarData.totalMonthHours} hrs</p>
+          <p className="metric-value text-emerald-400"><Icon name="query_stats" /> {calendarData.totalMonthHours} hrs</p>
         </div>
       </div>
 
@@ -60,7 +61,7 @@ export function TurnosView({
         <div className="flex flex-wrap items-center gap-8">
           <div className="w-[220px]">
             <VisualMonthPicker
-              label="📅 Mes:"
+              label="Mes:"
               value={selectedMonthYear}
               onChange={setSelectedMonthYear}
             />
@@ -68,7 +69,7 @@ export function TurnosView({
 
           <div className="flex items-center gap-3">
             <CustomDropdown
-              label="⚙️ Turno:"
+              label="Turno:"
               value={selectedShiftTemplate}
               onChange={(val) => setSelectedShiftTemplate(val)}
               options={shiftOptions}
@@ -80,7 +81,7 @@ export function TurnosView({
                 onClick={() => onDeleteShift(selectedShiftTemplate)}
                 title="Eliminar turno actual"
               >
-                🗑️ Eliminar
+                <Icon name="delete" /> Eliminar
               </button>
             )}
           </div>
@@ -93,22 +94,22 @@ export function TurnosView({
               onClick={onSaveAllChanges}
               title="Guardar todos los cambios de este turno y mes"
             >
-              💾 Guardar Cambios
+              <Icon name="save" /> Guardar Cambios
             </button>
             <button
               className="btn-save"
               onClick={onOpenCreateShift}
             >
-              ➕ Crear Nuevo Turno
+              <Icon name="add" /> Crear Nuevo Turno
             </button>
           </div>
         )}
       </div>
 
       <div className="legend-bar">
-        <span className="legend-item"><span className="legend-dot dot-entrada"></span> ☀️ 1ra Marca: Entrada</span>
-        <span className="legend-item"><span className="legend-dot dot-salida"></span> 🌙 1ra Marca: Salida (Nocturno)</span>
-        <span className="legend-item"><span className="legend-dot dot-rest"></span> 🛌 Día de Descanso (P)</span>
+        <span className="legend-item"><span className="legend-dot dot-entrada"></span> <Icon name="light_mode" /> 1ra Marca: Entrada</span>
+        <span className="legend-item"><span className="legend-dot dot-salida"></span> <Icon name="dark_mode" /> 1ra Marca: Salida (Nocturno)</span>
+        <span className="legend-item"><span className="legend-dot dot-rest"></span> <Icon name="bed" /> Día de Descanso (P)</span>
       </div>
 
       {(() => {
@@ -157,12 +158,12 @@ export function TurnosView({
                     <div className="card-divider !my-1"></div>
                     <div className="card-day-body !p-0 flex justify-center items-center flex-1">
                       {isRest ? (
-                        <span className="badge-rest text-xs py-1 px-2">🛌 Descanso (P)</span>
+                        <span className="badge-rest text-xs py-1 px-2"><Icon name="bed" /> Descanso (P)</span>
                       ) : (
                         <div className="card-hours-container gap-0.5">
                           <span className="badge-hours text-base">{d.hours} hrs</span>
                           <span className={`badge-mark-dir text-[10px] py-0.5 px-1.5 ${isSalida ? 'dir-salida' : 'dir-entrada'}`}>
-                            {isSalida ? '🌙 Salida' : '☀️ Entrada'}
+                            <Icon name={isSalida ? 'dark_mode' : 'light_mode'} /> {isSalida ? 'Salida' : 'Entrada'}
                           </span>
                         </div>
                       )}

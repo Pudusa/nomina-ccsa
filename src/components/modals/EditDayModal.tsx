@@ -1,4 +1,5 @@
 import type { DayConfig } from '../../types';
+import { Icon } from '../Icon';
 
 interface EditDayModalProps {
   editingDay: { dayIndex: number; dayNum: number; config: DayConfig } | null;
@@ -32,7 +33,7 @@ export function EditDayModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Editar Día {editingDay.dayNum}</h2>
+        <h2><Icon name="edit_calendar" /> Editar Día {editingDay.dayNum}</h2>
         <p className="modal-subtitle">
           Turno: <strong>{selectedShiftTemplate}</strong> — Mes: <strong>{selectedMonthYear}</strong> (Ajuste específico para este mes)
         </p>
@@ -59,8 +60,8 @@ export function EditDayModal({
             value={modalMarkDirection}
             onChange={(e) => setModalMarkDirection(e.target.value as 'entrada' | 'salida')}
           >
-            <option value="entrada">🟢 Entrada (Check-in)</option>
-            <option value="salida">🌙 Salida (Check-out - Cruza medianoche)</option>
+            <option value="entrada">Entrada (Check-in)</option>
+            <option value="salida">Salida (Check-out - Cruza medianoche)</option>
           </select>
           <small className="modal-hint">
             Define si el primer marcaje del día es una Entrada o una Salida para evitar confusión en turnos nocturnos.

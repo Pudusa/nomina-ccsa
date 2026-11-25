@@ -4,6 +4,7 @@ import { VisualDatePicker } from '../VisualDatePicker';
 import { VisualMonthPicker } from '../VisualMonthPicker';
 import { getTodayDateString, getYesterdayDateString } from '../../utils/dateUtils';
 import { apiFetch } from '../../utils/api';
+import { Icon } from '../Icon';
 
 interface Anomalia {
   id: number;
@@ -299,7 +300,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
       {successMessage && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-sm font-bold shadow-sm flex items-center justify-between animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
-            <span>✅</span>
+            <Icon name="check_circle" />
             <span>{successMessage}</span>
           </div>
           <button onClick={() => setSuccessMessage(null)} className="text-emerald-600 hover:text-emerald-900 font-bold cursor-pointer">✕</button>
@@ -310,19 +311,19 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-            <p className="metric-title text-xs font-bold text-slate-500 uppercase tracking-wider">Total Incidencias</p>
+            <p className="metric-title text-xs font-bold text-slate-500 uppercase tracking-wider"><Icon name="event_note" /> Total Incidencias</p>
             <p className="metric-value text-lg font-extrabold text-slate-900">{totalAnomaliasCount}</p>
           </div>
           <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl">
-            <p className="metric-title text-xs font-bold text-rose-600 uppercase tracking-wider">Ausencias</p>
+            <p className="metric-title text-xs font-bold text-rose-600 uppercase tracking-wider"><Icon name="person_off" /> Ausencias</p>
             <p className="metric-value text-lg font-extrabold text-rose-900">{totalAusencias}</p>
           </div>
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
-            <p className="metric-title text-xs font-bold text-amber-600 uppercase tracking-wider">Faltas Marca</p>
+            <p className="metric-title text-xs font-bold text-amber-600 uppercase tracking-wider"><Icon name="schedule_missing" /> Faltas Marca</p>
             <p className="metric-value text-lg font-extrabold text-amber-900">{totalIncompletas}</p>
           </div>
           <div className="bg-purple-50 border border-purple-200 p-4 rounded-xl">
-            <p className="metric-title text-xs font-bold text-purple-600 uppercase tracking-wider">Fuera de Turno</p>
+            <p className="metric-title text-xs font-bold text-purple-600 uppercase tracking-wider"><Icon name="swap_horiz" /> Fuera de Turno</p>
             <p className="metric-value text-lg font-extrabold text-purple-900">{totalFueraDeTurno}</p>
           </div>
         </div>
@@ -341,7 +342,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-transparent text-slate-800 font-semibold text-base outline-none placeholder:text-slate-400"
               />
-              <span className="text-slate-400 text-sm ml-2">🔍</span>
+              <Icon name="search" className="asist-search-icon" />
             </div>
           </div>
 
@@ -472,7 +473,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
                         )}
                         {anom.marcas && anom.marcas.length > 0 && (
                           <span className="text-xs font-semibold text-purple-700 block mt-1">
-                            🕒 Marcas: {anom.marcas.join(', ')}
+                            <Icon name="schedule" /> Marcas: {anom.marcas.join(', ')}
                           </span>
                         )}
                       </td>
@@ -524,7 +525,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200">
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base">Justificar / Clasificar Incidencia</h3>
+                <h3 className="font-bold text-base"><Icon name="fact_check" /> Justificar / Clasificar Incidencia</h3>
                 <p className="text-xs text-slate-400">{justifyingItem.workerName} (No. {justifyingItem.workerNo})</p>
               </div>
               <button

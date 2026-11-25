@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
+import { Icon } from '../Icon';
 
 interface ZkDevice {
   id?: number;
@@ -116,7 +117,7 @@ export function ZkView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">🕐 Relojes ZKTeco</h1>
+        <h1 className="text-2xl font-bold text-slate-800"><Icon name="schedule" /> Relojes ZKTeco</h1>
         <p className="text-sm text-slate-500">
           Configura los equipos, la hora de carga automática y consulta cada importación realizada.
         </p>
@@ -186,7 +187,7 @@ export function ZkView() {
                 type="button" className="btn-cancel"
                 onClick={() => setDevices(prev => prev.filter((_, i) => i !== index))}
               >
-                ✕
+                <Icon name="close" />
               </button>
             </div>
           ))}

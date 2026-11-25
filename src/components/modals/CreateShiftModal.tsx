@@ -1,3 +1,4 @@
+import { Icon } from '../Icon';
 interface CreateShiftModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,7 +19,7 @@ export function CreateShiftModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Crear Nuevo Turno</h2>
+        <h2><Icon name="add_circle" /> Crear Nuevo Turno</h2>
         <p className="modal-subtitle">
           Introduce el nombre del nuevo turno (se guardará en la base de datos SQLite).
         </p>

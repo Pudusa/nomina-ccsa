@@ -2,6 +2,7 @@ import type { UniqueWorker, DayConfig } from '../../types';
 import { getTurnoOnDate } from '../../utils/dateUtils';
 import { useState, useMemo } from 'react';
 import { CustomDropdown } from '../CustomDropdown';
+import { Icon } from '../Icon';
 
 interface TrabajadoresViewProps {
   uniqueWorkers: UniqueWorker[];
@@ -81,11 +82,11 @@ export function TrabajadoresView({
       {/* 1. Tarjetas de Métricas / Estadísticas */}
       <div className="metrics-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Trabajadores</h3>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2"><Icon name="groups" /> Total Trabajadores</h3>
           <p className="metric-value text-xl font-extrabold text-slate-900">{departmentFilteredWorkers.length}</p>
         </div>
         <div className="metric-card bg-white border border-slate-200 rounded-xl p-6 text-center shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Trabajadores Filtrados</h3>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2"><Icon name="person_search" /> Trabajadores Filtrados</h3>
           <p className="metric-value text-xl font-extrabold text-sky-600">{departmentFilteredWorkers.length}</p>
         </div>
       </div>
@@ -109,14 +110,14 @@ export function TrabajadoresView({
                 }}
                 className="w-full bg-transparent text-slate-800 font-semibold text-base outline-none placeholder:text-slate-400"
               />
-              <span className="text-slate-400 text-sm ml-2">🔍</span>
+              <Icon name="search" className="asist-search-icon" />
             </div>
           </div>
 
           {/* Filtro por Turno */}
           <div className="w-[240px]">
             <CustomDropdown
-              label="🔄 Filtrar por Turno:"
+              label="Filtrar por Turno:"
               value={selectedTurno}
               onChange={(val) => {
                 setSelectedTurno(val);
@@ -133,7 +134,7 @@ export function TrabajadoresView({
           {/* Filtro por Departamento */}
           <div className="w-[240px]">
             <CustomDropdown
-              label="🏢 Filtrar por Departamento:"
+              label="Filtrar por Departamento:"
               value={selectedDepartamento}
               onChange={(val) => {
                 setSelectedDepartamento(val);
@@ -189,7 +190,7 @@ export function TrabajadoresView({
                             className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-sm text-center"
                             title="Ver calendario mensual de asistencia"
                           >
-                            📅 Calendario
+                            <Icon name="calendar_month" /> Calendario
                           </button>
                           {canEdit && (
                             <>
@@ -198,14 +199,14 @@ export function TrabajadoresView({
                                 className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm text-center"
                                 title="Configurar turnos y periodos"
                               >
-                                ✏️ Editar
+                                <Icon name="edit" /> Editar
                               </button>
                               <button
                                 onClick={() => onBajaWorker(worker)}
                                 className="px-3 py-1.5 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition shadow-sm text-center"
                                 title={worker.fechaBaja ? `Dado de baja el ${worker.fechaBaja}` : 'Dar de baja desde una fecha'}
                               >
-                                {worker.fechaBaja ? '🔴 Baja' : '🚫 Dar de baja'}
+                                <Icon name={worker.fechaBaja ? 'person_off' : 'block'} /> {worker.fechaBaja ? 'Baja' : 'Dar de baja'}
                               </button>
                             </>
                           )}
