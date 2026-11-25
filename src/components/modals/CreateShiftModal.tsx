@@ -16,6 +16,8 @@ export function CreateShiftModal({
 }: CreateShiftModalProps) {
   if (!isOpen) return null;
 
+  const empty = newShiftName.trim().length === 0;
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -33,17 +35,20 @@ export function CreateShiftModal({
             value={newShiftName}
             onChange={(e) => setNewShiftName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') onSave();
+              if (e.key === 'Enter' && !empty) onSave();
             }}
             placeholder="Ej. TURNO ROTATIVO 5"
+            aria-invalid={empty}
           />
+          {empty && <small className="modal-error">El nombre del turno es obligatorio.</small>}
+          <small className="modal-hint">El nombre se guardará en MAYÚSCULAS.</small>
         </div>
 
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn-save" onClick={onSave}>
+          <button className="btn-save" onClick={onSave} disabled={empty}>
             Crear Turno
           </button>
         </div>

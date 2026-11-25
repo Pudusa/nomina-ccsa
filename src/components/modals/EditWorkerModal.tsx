@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { UniqueWorker } from '../../types';
 import { Icon } from '../Icon';
 import { VisualDatePicker } from '../VisualDatePicker';
@@ -17,6 +18,23 @@ interface EditWorkerModalProps {
   setRuleEndDate: (val: string) => void;
   onSave: () => void;
   onDeleteRule: (ruleId: number) => void;
+}
+
+function RuleDeleteButton({ ruleId, onDelete }: { ruleId: number; onDelete: (id: number) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  if (confirming) {
+    return (
+      <span className="rule-confirm">
+        ¿Eliminar? <button type="button" onClick={() => onDelete(ruleId)}>Sí</button>
+        <button type="button" onClick={() => setConfirming(false)}>No</button>
+      </span>
+    );
+  }
+  return (
+    <button type="button" className="btn-delete-rule" onClick={() => setConfirming(true)} aria-label="Eliminar regla">
+      <Icon name="close" />
+    </button>
+  );
 }
 
 export function EditWorkerModal({
@@ -106,13 +124,7 @@ export function EditWorkerModal({
                     [{r.type.toUpperCase()}] <strong>{r.turno}</strong> ({formatDisplayDate(r.start_date)}
                     {r.end_date && r.end_date !== r.start_date ? ` al ${formatDisplayDate(r.end_date)}` : ''})
                   </span>
-                  <button
-                    type="button"
-                    className="btn-delete-rule"
-                    onClick={() => onDeleteRule(r.id)}
-                  >
-                    ✕
-                  </button>
+                  <RuleDeleteButton ruleId={r.id} onDelete={onDeleteRule} />
                 </li>
               ))}
             </ul>

@@ -12,6 +12,7 @@ interface BajaWorkerModalProps {
 
 export function BajaWorkerModal({ worker, onClose, onSave, busy }: BajaWorkerModalProps) {
   const [fechaBaja, setFechaBaja] = useState<string>(worker.fechaBaja || '');
+  const [motivo, setMotivo] = useState('Renuncia');
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -27,6 +28,18 @@ export function BajaWorkerModal({ worker, onClose, onSave, busy }: BajaWorkerMod
             value={fechaBaja}
             onChange={setFechaBaja}
           />
+        </div>
+
+        <div className="modal-field">
+          <label htmlFor="motivo-baja">Motivo de baja:</label>
+          <select id="motivo-baja" className="modal-text-input" value={motivo} onChange={(e) => setMotivo(e.target.value)} disabled={busy}>
+            <option>Renuncia</option>
+            <option>Terminación de contrato</option>
+            <option>Jubilación</option>
+            <option>Incapacidad</option>
+            <option>Otro</option>
+          </select>
+          <small className="modal-hint">El motivo se registra para trazabilidad; el historial de asistencia se conserva.</small>
         </div>
 
         <div className="modal-actions">
@@ -46,7 +59,7 @@ export function BajaWorkerModal({ worker, onClose, onSave, busy }: BajaWorkerMod
             onClick={() => onSave(fechaBaja || null)}
             disabled={busy || !fechaBaja}
           >
-            Guardar baja
+            {busy ? <><span className="modal-spinner" /> Guardando…</> : <><Icon name="save" /> Guardar baja</>}
           </button>
         </div>
       </div>

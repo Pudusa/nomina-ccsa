@@ -113,6 +113,27 @@ body {
   .dash-table { font-size: 0.75rem; }
 }
 
+/* ===== Modales: mejoras Stitch ===== */
+.modal-error { display: block; margin-top: 0.3rem; color: #b91c1c; font-size: 0.75rem; font-weight: 600; }
+.modal-hint { display: block; margin-top: 0.25rem; color: #94a3b8; font-size: 0.72rem; }
+.modal-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: login-spin .8s linear infinite; }
+.modal-text-input[aria-invalid="true"] { border-color: #b91c1c; }
+.rule-confirm { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: #b91c1c; }
+.rule-confirm button { border: 0; background: #fee2e2; color: #991b1b; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; cursor: pointer; font-weight: 700; }
+.session-expired { text-align: center; max-width: 420px; }
+.session-expired-icon { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 12px; background: #f0fdf4; color: #15803d; margin-bottom: 0.5rem; }
+.session-expired-note { font-size: 0.75rem; color: #94a3b8; margin: 0.75rem 0 0; }
+.day-breakdown { margin-top: 1rem; padding: 0.85rem 1rem; border-radius: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 0.8rem; }
+.day-breakdown strong { display: inline-flex; align-items: center; gap: 0.3rem; }
+.day-breakdown button { border: 0; background: transparent; color: #166534; cursor: pointer; }
+.day-breakdown-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem 1rem; margin-top: 0.5rem; color: #475569; }
+.day-breakdown-grid strong { color: #0f172a; }
+
+@media (max-width: 640px) {
+  .modal-content { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; align-self: flex-end; max-height: 92vh; overflow-y: auto; }
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+}
+
 /* ===== Login (diseño Stitch) ===== */
 .login-backdrop {
   position: fixed;

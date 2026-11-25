@@ -159,6 +159,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
   const [newTipo, setNewTipo] = useState('Falta injustificada');
   const [newDescripcion, setNewDescripcion] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [adjunto, setAdjunto] = useState('');
 
   const fetchIncidents = async () => {
     setLoading(true);
@@ -265,6 +266,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
     setJustifyingItem({ workerNo, workerName, anomalia: anom });
     setNewTipo(anom.tipo || 'Falta injustificada');
     setNewDescripcion(anom.descripcion || '');
+    setAdjunto('');
   };
 
   const handleSaveJustification = async () => {
@@ -285,6 +287,7 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
       if (res.ok) {
         await fetchIncidents();
         setJustifyingItem(null);
+        setAdjunto('');
         setSuccessMessage('El cambio quedó realizado');
         setTimeout(() => setSuccessMessage(null), 4000);
       }
@@ -577,6 +580,23 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Adjuntar comprobante (opcional):
+                </label>
+                <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-500 cursor-pointer hover:border-emerald-500">
+                  <Icon name="attach_file" />
+                  PDF o imagen (ej. comprobante médico IMSS)
+                  <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => setAdjunto(e.target.files?.[0]?.name || '')} />
+                </label>
+                {adjunto && (
+                  <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs">
+                    <Icon name="description" /> {adjunto}
+                    <button type="button" onClick={() => setAdjunto('')} aria-label="Quitar archivo"><Icon name="close" /></button>
+                  </span>
+                )}
+              </div>
+
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -588,9 +608,9 @@ export function IncidenciasView({ searchTerm, setSearchTerm, canEdit }: Incidenc
                 <button
                   type="button"
                   onClick={handleSaveJustification}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/25 cursor-pointer transition"
+                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-700/25 cursor-pointer transition inline-flex items-center gap-2"
                 >
-                  Guardar Justificación
+                  <Icon name="save" /> Guardar Justificación
                 </button>
               </div>
             </div>

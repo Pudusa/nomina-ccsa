@@ -44,6 +44,7 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
   const [currentMonthYear, setCurrentMonthYear] = useState<string>(monthYear || new Date().toISOString().substring(0, 7));
   const [dailyStatus, setDailyStatus] = useState<Record<string, DayInfo>>({});
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {
     if (monthYear) {
@@ -163,7 +164,9 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
                   return (
                     <div
                       key={dateStr}
-                      className={`h-28 rounded-xl border p-2 flex flex-col justify-between transition transform hover:scale-[1.02] ${bgClass}`}
+                      onClick={() => setSelectedDay(selectedDay === dateStr ? null : dateStr)}
+                      title="Ver desglose del día"
+                      className={`h-28 rounded-xl border p-2 flex flex-col justify-between transition transform hover:scale-[1.02] cursor-pointer ${bgClass}`}
                     >
                       <div className="flex justify-between items-center text-xs font-bold">
                         <span>{dayNum}</span>
@@ -195,6 +198,22 @@ export function WorkerCalendarModal({ worker, monthYear, onClose }: WorkerCalend
                   );
                 })}
               </div>
+
+              {selectedDay && dailyStatus[selectedDay] && (
+                <div className="day-breakdown">
+                  <div className="flex items-center justify-between mb-2">
+                    <strong><Icon name="info" /> Desglose del día {selectedDay}</strong>
+                    <button type="button" onClick={() => setSelectedDay(null)} aria-label="Cerrar desglose"><Icon name="close" /></button>
+                  </div>
+                  <div className="day-breakdown-grid">
+                    <span>Turno: <strong>{dailyStatus[selectedDay].turno || '—'}</strong></span>
+                    <span>Horas trabajadas: <strong>{dailyStatus[selectedDay].workedHours || 0}</strong></span>
+                    <span>Horas esperadas: <strong>{dailyStatus[selectedDay].expectedHours || 0}</strong></span>
+                    <span>Horas extra: <strong>{dailyStatus[selectedDay].overtimeHours || 0}</strong></span>
+                    <span>Marcas: <strong>{(dailyStatus[selectedDay].times || []).join(' → ') || 'Sin marcas'}</strong></span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

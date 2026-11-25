@@ -17,9 +17,11 @@ import { ZkView } from './components/views/ZkView';
 import { BajaWorkerModal } from './components/modals/BajaWorkerModal';
 import { DashboardView } from './components/views/DashboardView';
 import { Icon } from './components/Icon';
+import { SessionExpiredModal } from './components/modals/SessionExpiredModal';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('nomina_token')));
+  const [sessionExpired, setSessionExpired] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<string>(() => {
     try {
       return JSON.parse(localStorage.getItem('nomina_user') || '{}').role || '';
@@ -37,6 +39,7 @@ export default function App() {
       console.warn('[App] Received nomina:unauthorized event. Setting isAuthenticated to false.');
       setIsAuthenticated(false);
       setUserRole('');
+      setSessionExpired(true);
     };
     window.addEventListener('nomina:unauthorized', handleUnauthorized);
     return () => {
@@ -823,7 +826,7 @@ export default function App() {
         />
       )}
 
-      {!isAuthenticated && (
+      {!isAuthenticated && !sessionExpired && (
         <LoginModal
           onLoginSuccess={() => {
             try {
@@ -832,7 +835,16 @@ export default function App() {
               setUserRole('');
             }
             setIsAuthenticated(true);
+            setSessionExpired(false);
             refreshData();
+          }}
+        />
+      )}
+
+      {sessionExpired && !isAuthenticated && (
+        <SessionExpiredModal
+          onReLogin={() => {
+            setSessionExpired(false);
           }}
         />
       )}
